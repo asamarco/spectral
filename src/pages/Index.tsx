@@ -2,6 +2,7 @@ import { SpectralConverter } from '@/components/SpectralConverter';
 import { Atom, Zap, Palette } from 'lucide-react';
 
 const Index = () => {
+  console.log('Index component is rendering');
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
