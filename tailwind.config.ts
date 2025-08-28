@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					glow: 'hsl(var(--primary-glow))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -51,6 +52,15 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
+				},
+				spectrum: {
+					violet: 'hsl(var(--spectrum-violet))',
+					blue: 'hsl(var(--spectrum-blue))',
+					cyan: 'hsl(var(--spectrum-cyan))',
+					green: 'hsl(var(--spectrum-green))',
+					yellow: 'hsl(var(--spectrum-yellow))',
+					orange: 'hsl(var(--spectrum-orange))',
+					red: 'hsl(var(--spectrum-red))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
@@ -88,7 +98,17 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+			},
+			backgroundImage: {
+				'gradient-spectrum': 'var(--gradient-spectrum)',
+				'gradient-surface': 'var(--gradient-surface)'
+			},
+			boxShadow: {
+				'glow': 'var(--shadow-glow)',
+				'spectrum': 'var(--shadow-spectrum)',
+				'soft': 'var(--shadow-soft)'
 			}
 		}
 	},
