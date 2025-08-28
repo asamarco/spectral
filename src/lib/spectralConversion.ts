@@ -212,7 +212,9 @@ export function parseSpectralData(text: string): SpectralData[] {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue; // Skip empty lines and comments
     
-    const parts = trimmed.split(/[\s,\t]+/);
+    // Handle various separators: tabs, spaces, commas, or any combination
+    const parts = trimmed.split(/[\t\s,]+/).filter(part => part.length > 0);
+    
     if (parts.length >= 2) {
       const wavelength = parseFloat(parts[0]);
       const intensity = parseFloat(parts[1]);
