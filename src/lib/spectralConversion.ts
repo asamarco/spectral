@@ -78,26 +78,47 @@ function getCMF(wavelength: number): [number, number, number] {
 
 // Convert XYZ to sRGB
 function xyzToRgb(X: number, Y: number, Z: number): [number, number, number] {
-  // Normalize by Y (luminance)
-  const x = X / (X + Y + Z);
-  const y = Y / (X + Y + Z);
+  console.log('XYZ input values:', { X, Y, Z });
   
-  // Convert to sRGB using standard matrix transformation
-  let r = 3.2406 * X - 1.5372 * Y - 0.4986 * Z;
-  let g = -0.9689 * X + 1.8758 * Y + 0.0415 * Z;
-  let b = 0.0557 * X - 0.2040 * Y + 1.0570 * Z;
+  // Normalize XYZ values (they should be in range 0-1 for sRGB conversion)
+  // The XYZ values from integration need to be normalized by the standard illuminant
+  const normalizedX = X / 95.047;
+  const normalizedY = Y / 100.0;
+  const normalizedZ = Z / 108.883;
   
-  // Gamma correction
-  r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
-  g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
-  b = b > 0.0031308 ? 1.055 * Math.pow(b, 1 / 2.4) - 0.055 : 12.92 * b;
+  console.log('Normalized XYZ:', { normalizedX, normalizedY, normalizedZ });
   
-  // Clamp to valid range
-  r = Math.max(0, Math.min(1, r));
-  g = Math.max(0, Math.min(1, g));
-  b = Math.max(0, Math.min(1, b));
+  // Convert to sRGB using standard matrix transformation (D65 illuminant)
+  let r = 3.2406 * normalizedX - 1.5372 * normalizedY - 0.4986 * normalizedZ;
+  let g = -0.9689 * normalizedX + 1.8758 * normalizedY + 0.0415 * normalizedZ;
+  let b = 0.0557 * normalizedX - 0.2040 * normalizedY + 1.0570 * normalizedZ;
   
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  console.log('Linear RGB before gamma:', { r, g, b });
+  
+  // Gamma correction (sRGB standard)
+  function gammaCorrect(c: number): number {
+    if (c <= 0.0031308) {
+      return 12.92 * c;
+    } else {
+      return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+    }
+  }
+  
+  r = gammaCorrect(r);
+  g = gammaCorrect(g);
+  b = gammaCorrect(b);
+  
+  console.log('Gamma corrected RGB:', { r, g, b });
+  
+  // Clamp to valid range and scale to 0-255
+  r = Math.max(0, Math.min(1, r)) * 255;
+  g = Math.max(0, Math.min(1, g)) * 255;
+  b = Math.max(0, Math.min(1, b)) * 255;
+  
+  const result = [Math.round(r), Math.round(g), Math.round(b)] as [number, number, number];
+  console.log('Final RGB:', result);
+  
+  return result;
 }
 
 // Convert RGB to hex
@@ -112,8 +133,11 @@ function rgbToHex(r: number, g: number, b: number): string {
 export function convertSpectrumToColor(spectralData: SpectralData[]): ColorResult | null {
   if (!spectralData || spectralData.length === 0) return null;
   
+  console.log('Input spectral data:', spectralData.slice(0, 5)); // Log first 5 points
+  
   // Calculate tristimulus values by integrating over the spectrum
   let X = 0, Y = 0, Z = 0;
+  let totalPoints = 0;
   
   for (let i = 0; i < spectralData.length - 1; i++) {
     const λ1 = spectralData[i].wavelength;
@@ -128,26 +152,52 @@ export function convertSpectrumToColor(spectralData: SpectralData[]): ColorResul
       
       const [cmfX, cmfY, cmfZ] = getCMF(avgWavelength);
       
-      X += avgIntensity * cmfX * dλ;
-      Y += avgIntensity * cmfY * dλ;
-      Z += avgIntensity * cmfZ * dλ;
+      const contributionX = avgIntensity * cmfX * dλ;
+      const contributionY = avgIntensity * cmfY * dλ;
+      const contributionZ = avgIntensity * cmfZ * dλ;
+      
+      X += contributionX;
+      Y += contributionY;
+      Z += contributionZ;
+      
+      totalPoints++;
+      
+      if (i < 3) { // Debug first few calculations
+        console.log(`Point ${i}: λ=${avgWavelength.toFixed(1)}, I=${avgIntensity.toFixed(3)}, CMF=[${cmfX.toFixed(4)}, ${cmfY.toFixed(4)}, ${cmfZ.toFixed(4)}], Contrib=[${contributionX.toFixed(4)}, ${contributionY.toFixed(4)}, ${contributionZ.toFixed(4)}]`);
+      }
     }
   }
   
-  if (X + Y + Z === 0) return null;
+  console.log(`Processed ${totalPoints} spectral intervals`);
+  console.log('Raw XYZ totals:', { X, Y, Z });
+  
+  if (X + Y + Z === 0) {
+    console.log('No XYZ values calculated - likely no data in visible range');
+    return null;
+  }
+  
+  // Normalize the XYZ values by the Y component (luminance normalization)
+  const maxY = Math.max(Y, 1); // Avoid division by zero
+  const normalizedX = X;
+  const normalizedY = Y; 
+  const normalizedZ = Z;
+  
+  console.log('Using XYZ values:', { X: normalizedX, Y: normalizedY, Z: normalizedZ });
   
   // Calculate chromaticity coordinates
-  const total = X + Y + Z;
-  const x = X / total;
-  const y = Y / total;
+  const total = normalizedX + normalizedY + normalizedZ;
+  const x = normalizedX / total;
+  const y = normalizedY / total;
   
   // Convert to RGB
-  const [r, g, b] = xyzToRgb(X, Y, Z);
+  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ);
   const hex = rgbToHex(r, g, b);
+  
+  console.log('Final result:', { rgb: [r, g, b], hex });
   
   return {
     rgb: [r, g, b],
-    xyz: [X, Y, Z],
+    xyz: [normalizedX, normalizedY, normalizedZ],
     chromaticity: [x, y],
     hex
   };
