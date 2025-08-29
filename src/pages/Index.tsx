@@ -6,19 +6,18 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-background via-background to-accent/20">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
+      <div className="relative bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
           <div className="text-center mb-12">
             <div className="flex justify-center mb-6">
               <div className="flex items-center gap-2 text-4xl">
                 <Atom className="h-12 w-12 text-primary animate-pulse" />
-                <span className="gradient-text font-bold">Spectral</span>
+                <span className="warm-text font-bold">Spectral</span>
                 <Palette className="h-8 w-8 text-accent" />
               </div>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              Spectrum to <span className="gradient-text">Color</span> Converter
+              Spectrum to <span className="warm-text">Color</span> Converter
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
               Transform spectral reflection data into precise colors using CIE 1931 color matching functions. 
