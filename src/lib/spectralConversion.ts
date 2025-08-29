@@ -45,6 +45,7 @@ const CIE_CMF_DATA = {
 export interface SpectralData {
   wavelength: number;
   intensity: number;
+  group?: number;
 }
 
 export interface ColorResult {
@@ -129,21 +130,28 @@ function rgbToHex(r: number, g: number, b: number): string {
   }).join('');
 }
 
-// Main conversion function
-export function convertSpectrumToColor(spectralData: SpectralData[]): ColorResult | null {
+// Main conversion function for a specific group
+export function convertSpectrumToColor(spectralData: SpectralData[], group?: number): ColorResult | null {
   if (!spectralData || spectralData.length === 0) return null;
   
-  console.log('Input spectral data:', spectralData.slice(0, 5)); // Log first 5 points
+  // Filter data for specific group if provided
+  const filteredData = group !== undefined 
+    ? spectralData.filter(d => d.group === group)
+    : spectralData;
+  
+  if (filteredData.length === 0) return null;
+  
+  console.log('Input spectral data:', filteredData.slice(0, 5)); // Log first 5 points
   
   // Calculate tristimulus values by integrating over the spectrum
   let X = 0, Y = 0, Z = 0;
   let totalPoints = 0;
   
-  for (let i = 0; i < spectralData.length - 1; i++) {
-    const λ1 = spectralData[i].wavelength;
-    const λ2 = spectralData[i + 1].wavelength;
-    const I1 = spectralData[i].intensity;
-    const I2 = spectralData[i + 1].intensity;
+  for (let i = 0; i < filteredData.length - 1; i++) {
+    const λ1 = filteredData[i].wavelength;
+    const λ2 = filteredData[i + 1].wavelength;
+    const I1 = filteredData[i].intensity;
+    const I2 = filteredData[i + 1].intensity;
     
     if (λ1 >= 380 && λ2 <= 780) { // Visible spectrum range
       const dλ = λ2 - λ1;
@@ -217,14 +225,44 @@ export function parseSpectralData(text: string): SpectralData[] {
     
     if (parts.length >= 2) {
       const wavelength = parseFloat(parts[0]);
-      const intensity = parseFloat(parts[1]);
+      let intensity: number;
+      let group: number | undefined;
+      
+      if (parts.length === 2) {
+        // Two columns: wavelength, intensity
+        intensity = parseFloat(parts[1]);
+      } else {
+        // Three or more columns: wavelength, group, ..., intensity (last column)
+        group = parseInt(parts[1]);
+        intensity = parseFloat(parts[parts.length - 1]);
+      }
       
       if (!isNaN(wavelength) && !isNaN(intensity)) {
-        data.push({ wavelength, intensity });
+        const spectralPoint: SpectralData = { wavelength, intensity };
+        if (group !== undefined && !isNaN(group)) {
+          spectralPoint.group = group;
+        }
+        data.push(spectralPoint);
       }
     }
   }
   
-  // Sort by wavelength
-  return data.sort((a, b) => a.wavelength - b.wavelength);
+  // Sort by group first, then by wavelength
+  return data.sort((a, b) => {
+    if (a.group !== b.group) {
+      return (a.group || 0) - (b.group || 0);
+    }
+    return a.wavelength - b.wavelength;
+  });
+}
+
+// Get unique groups from spectral data
+export function getGroups(spectralData: SpectralData[]): number[] {
+  const groups = new Set<number>();
+  spectralData.forEach(d => {
+    if (d.group !== undefined) {
+      groups.add(d.group);
+    }
+  });
+  return Array.from(groups).sort((a, b) => a - b);
 }

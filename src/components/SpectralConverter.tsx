@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import { Upload, Palette, BarChart3, Info } from 'lucide-react';
-import { convertSpectrumToColor, parseSpectralData, type ColorResult, type SpectralData } from '@/lib/spectralConversion';
+import { convertSpectrumToColor, parseSpectralData, getGroups, type ColorResult, type SpectralData } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
 
 interface SpectralConverterProps {
@@ -13,8 +15,10 @@ interface SpectralConverterProps {
 
 export function SpectralConverter({ className }: SpectralConverterProps) {
   const [spectralInput, setSpectralInput] = useState('');
-  const [colorResult, setColorResult] = useState<ColorResult | null>(null);
+  const [colorResults, setColorResults] = useState<ColorResult[]>([]);
   const [spectralData, setSpectralData] = useState<SpectralData[]>([]);
+  const [groups, setGroups] = useState<number[]>([]);
+  const [currentGroup, setCurrentGroup] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -62,26 +66,53 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         throw new Error('At least 2 data points are required');
       }
 
-      const result = convertSpectrumToColor(parsed);
-      
-      if (!result) {
-        throw new Error('Unable to convert spectrum to color');
-      }
-
       setSpectralData(parsed);
-      setColorResult(result);
+
+      const uniqueGroups = getGroups(parsed);
+      setGroups(uniqueGroups);
       
-      toast({
-        title: "Conversion successful!",
-        description: `Converted ${parsed.length} spectral data points to color.`,
-      });
+      if (uniqueGroups.length > 0) {
+        // Convert each group separately
+        const results: ColorResult[] = [];
+        for (const group of uniqueGroups) {
+          const result = convertSpectrumToColor(parsed, group);
+          if (result) {
+            results.push(result);
+          }
+        }
+        
+        if (results.length > 0) {
+          setColorResults(results);
+          setCurrentGroup(0);
+          toast({
+            title: "Conversion successful!",
+            description: `Generated ${results.length} color(s) from ${uniqueGroups.length} group(s)`,
+          });
+        } else {
+          throw new Error("No valid colors generated");
+        }
+      } else {
+        // Single group (no group column)
+        const result = convertSpectrumToColor(parsed);
+        if (result) {
+          setColorResults([result]);
+          setGroups([]);
+          setCurrentGroup(0);
+          toast({
+            title: "Conversion successful!",
+            description: `Converted ${parsed.length} spectral data points to color.`,
+          });
+        } else {
+          throw new Error('Unable to convert spectrum to color');
+        }
+      }
     } catch (error) {
       toast({
         title: "Conversion failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive"
       });
-      setColorResult(null);
+      setColorResults([]);
       setSpectralData([]);
     } finally {
       setIsLoading(false);
@@ -171,28 +202,50 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
       </Card>
 
       {/* Results Section */}
-      {colorResult && (
+      {colorResults.length > 0 && (
         <Card className="data-input">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
               Color Result
+              {groups.length > 1 && (
+                <Badge variant="secondary">
+                  Group {groups[currentGroup]}
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
-              Converted color from {spectralData.length} spectral data points using CIE 1931 color matching functions.
+              {groups.length > 1 
+                ? `Showing color from group ${groups[currentGroup]} (${currentGroup + 1} of ${groups.length}). Use the slider to switch between groups.`
+                : `Converted color from ${spectralData.length} spectral data points using CIE 1931 color matching functions.`
+              }
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {groups.length > 1 && (
+              <div className="space-y-2">
+                <Label>Group: {groups[currentGroup]} ({currentGroup + 1} of {groups.length})</Label>
+                <Slider
+                  value={[currentGroup]}
+                  onValueChange={(value) => setCurrentGroup(value[0])}
+                  max={groups.length - 1}
+                  min={0}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+            )}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Color Swatch */}
               <div className="space-y-4">
                 <h3 className="font-semibold">Color Preview</h3>
                 <div 
                   className="spectrum-swatch h-32 w-full rounded-lg"
-                  style={{ backgroundColor: colorResult.hex }}
+                  style={{ backgroundColor: colorResults[currentGroup]?.hex }}
                 />
                 <div className="text-center">
-                  <div className="text-2xl font-mono font-bold">{colorResult.hex.toUpperCase()}</div>
+                  <div className="text-2xl font-mono font-bold">{colorResults[currentGroup]?.hex.toUpperCase()}</div>
                   <div className="text-sm text-muted-foreground">Hex Color Code</div>
                 </div>
               </div>
@@ -204,24 +257,24 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="text-sm font-medium text-muted-foreground">RGB</div>
                     <div className="font-mono">
-                      R: {colorResult.rgb[0]}, G: {colorResult.rgb[1]}, B: {colorResult.rgb[2]}
+                      R: {colorResults[currentGroup]?.rgb[0]}, G: {colorResults[currentGroup]?.rgb[1]}, B: {colorResults[currentGroup]?.rgb[2]}
                     </div>
                   </div>
                   
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="text-sm font-medium text-muted-foreground">CIE XYZ</div>
                     <div className="font-mono text-sm">
-                      X: {colorResult.xyz[0].toFixed(4)}<br />
-                      Y: {colorResult.xyz[1].toFixed(4)}<br />
-                      Z: {colorResult.xyz[2].toFixed(4)}
+                      X: {colorResults[currentGroup]?.xyz[0].toFixed(4)}<br />
+                      Y: {colorResults[currentGroup]?.xyz[1].toFixed(4)}<br />
+                      Z: {colorResults[currentGroup]?.xyz[2].toFixed(4)}
                     </div>
                   </div>
                   
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="text-sm font-medium text-muted-foreground">Chromaticity (x,y)</div>
                     <div className="font-mono">
-                      x: {colorResult.chromaticity[0].toFixed(4)}<br />
-                      y: {colorResult.chromaticity[1].toFixed(4)}
+                      x: {colorResults[currentGroup]?.chromaticity[0].toFixed(4)}<br />
+                      y: {colorResults[currentGroup]?.chromaticity[1].toFixed(4)}
                     </div>
                   </div>
                 </div>
@@ -253,6 +306,22 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
           <p>
             <strong>Data Format:</strong> Each line should contain wavelength (in nm) and intensity values, 
             separated by spaces, tabs, or commas. Lines starting with # are treated as comments.
+          </p>
+          <div className="bg-muted p-3 rounded-md font-mono text-sm">
+            <strong>Two columns:</strong><br/>
+            380 0.05<br/>
+            400 0.08<br/>
+            420 0.12<br/>
+            ...<br/><br/>
+            <strong>Three or more columns (grouped data):</strong><br/>
+            380 0 0.05<br/>
+            400 0 0.08<br/>
+            380 1 0.07<br/>
+            400 1 0.09<br/>
+            ...
+          </div>
+          <p className="text-sm text-muted-foreground">
+            For grouped data: wavelength, group_number, [other_columns...], intensity (last column)
           </p>
         </CardContent>
       </Card>
