@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Palette, BarChart3, Info } from 'lucide-react';
+import { Upload, Palette, BarChart3, Info, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { convertSpectrumToColor, parseSpectralData, getGroups, type ColorResult, type SpectralData } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -143,10 +144,37 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     });
   }, [toast]);
 
+  // Prepare plot data
+  const getPlotData = useCallback(() => {
+    if (spectralData.length === 0) return [];
+    
+    if (groups.length === 0) {
+      // Single group
+      return spectralData.map(point => ({
+        wavelength: point.wavelength,
+        intensity: point.intensity,
+      }));
+    } else {
+      // Multiple groups - create combined data structure
+      const wavelengths = [...new Set(spectralData.map(p => p.wavelength))].sort((a, b) => a - b);
+      return wavelengths.map(wavelength => {
+        const dataPoint: any = { wavelength };
+        groups.forEach(group => {
+          const point = spectralData.find(p => p.wavelength === wavelength && p.group === group);
+          dataPoint[`group_${group}`] = point ? point.intensity : null;
+        });
+        return dataPoint;
+      });
+    }
+  }, [spectralData, groups]);
+
+  const plotData = getPlotData();
+
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Input Section */}
-      <Card className="data-input">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Input Section */}
+        <Card className="data-input">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
@@ -200,6 +228,78 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
           </div>
         </CardContent>
       </Card>
+
+        {/* Plot Section */}
+        {spectralData.length > 0 && (
+          <Card className="data-input">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Spectral Data Plot
+              </CardTitle>
+              <CardDescription>
+                {groups.length > 1 
+                  ? `Visualizing ${groups.length} groups of spectral data with their corresponding colors`
+                  : 'Visualizing spectral data with converted color'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={plotData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="wavelength" 
+                      stroke="hsl(var(--foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--foreground))"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px'
+                      }}
+                    />
+                    {groups.length > 1 ? (
+                      groups.map((group, index) => (
+                        <Line 
+                          key={group}
+                          type="monotone" 
+                          dataKey={`group_${group}`}
+                          stroke={colorResults[index]?.hex || 'hsl(var(--primary))'}
+                          strokeWidth={2}
+                          dot={false}
+                          name={`Group ${group}`}
+                          connectNulls={false}
+                        />
+                      ))
+                    ) : (
+                      <Line 
+                        type="monotone" 
+                        dataKey="intensity" 
+                        stroke={colorResults[0]?.hex || 'hsl(var(--primary))'}
+                        strokeWidth={2}
+                        dot={false}
+                        name="Intensity"
+                      />
+                    )}
+                    {groups.length > 1 && <Legend />}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Results Section */}
       {colorResults.length > 0 && (
