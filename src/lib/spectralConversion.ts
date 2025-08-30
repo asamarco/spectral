@@ -53,6 +53,8 @@ export interface ColorResult {
   xyz: [number, number, number];
   chromaticity: [number, number];
   hex: string;
+  normalizedRgb: [number, number, number];
+  normalizedHex: string;
 }
 
 // Linear interpolation for color matching functions
@@ -201,13 +203,22 @@ export function convertSpectrumToColor(spectralData: SpectralData[], group?: num
   const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ);
   const hex = rgbToHex(r, g, b);
   
-  console.log('Final result:', { rgb: [r, g, b], hex });
+  // Calculate normalized RGB (divide by max(R,G,B) and multiply by 255)
+  const maxRgb = Math.max(r, g, b);
+  const normalizedRgb: [number, number, number] = maxRgb > 0 
+    ? [Math.round((r / maxRgb) * 255), Math.round((g / maxRgb) * 255), Math.round((b / maxRgb) * 255)]
+    : [r, g, b];
+  const normalizedHex = rgbToHex(normalizedRgb[0], normalizedRgb[1], normalizedRgb[2]);
+  
+  console.log('Final result:', { rgb: [r, g, b], hex, normalizedRgb, normalizedHex });
   
   return {
     rgb: [r, g, b],
     xyz: [normalizedX, normalizedY, normalizedZ],
     chromaticity: [x, y],
-    hex
+    hex,
+    normalizedRgb,
+    normalizedHex
   };
 }
 
