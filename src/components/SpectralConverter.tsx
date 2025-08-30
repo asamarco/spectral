@@ -128,6 +128,20 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       setSpectralInput(content);
+      
+      // Parse spectral data immediately for preview
+      try {
+        const parsed = parseSpectralData(content);
+        if (parsed.length > 0) {
+          setSpectralData(parsed);
+          const uniqueGroups = getGroups(parsed);
+          setGroups(uniqueGroups);
+          setColorResults([]); // Clear color results
+        }
+      } catch (error) {
+        // Ignore parsing errors for preview
+      }
+      
       toast({
         title: "File loaded",
         description: `Loaded ${file.name} successfully.`,
@@ -136,13 +150,38 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     reader.readAsText(file);
   }, [toast]);
 
+  const handleInputChange = useCallback((value: string) => {
+    setSpectralInput(value);
+    
+    // Parse spectral data immediately for preview
+    try {
+      const parsed = parseSpectralData(value);
+      if (parsed.length > 0) {
+        setSpectralData(parsed);
+        const uniqueGroups = getGroups(parsed);
+        setGroups(uniqueGroups);
+        setColorResults([]); // Clear color results
+      } else {
+        setSpectralData([]);
+        setGroups([]);
+        setColorResults([]);
+      }
+    } catch (error) {
+      // Ignore parsing errors for preview
+      setSpectralData([]);
+      setGroups([]);
+      setColorResults([]);
+    }
+  }, []);
+
   const useExample = useCallback(() => {
     setSpectralInput(exampleData);
+    handleInputChange(exampleData);
     toast({
       title: "Example loaded",
       description: "Loaded example spectral data for a typical reflection spectrum.",
     });
-  }, [toast]);
+  }, [toast, handleInputChange]);
 
   // Prepare plot data
   const getPlotData = useCallback(() => {
@@ -194,7 +233,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
 420 0.12
 ..."
               value={spectralInput}
-              onChange={(e) => setSpectralInput(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               className="min-h-32 font-mono text-sm"
             />
           </div>
@@ -238,9 +277,11 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                 Spectral Data Plot
               </CardTitle>
               <CardDescription>
-                {groups.length > 1 
-                  ? `Visualizing ${groups.length} groups of spectral data with their corresponding colors`
-                  : 'Visualizing spectral data with converted color'
+                {colorResults.length === 0 
+                  ? 'Spectral data preview - convert to see colors'
+                  : groups.length > 1 
+                    ? `Visualizing ${groups.length} groups of spectral data with their corresponding colors`
+                    : 'Visualizing spectral data with converted color'
                 }
               </CardDescription>
             </CardHeader>
@@ -270,23 +311,26 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                       }}
                     />
                     {groups.length > 1 ? (
-                      groups.map((group, index) => (
-                        <Line 
-                          key={group}
-                          type="monotone" 
-                          dataKey={`group_${group}`}
-                          stroke={colorResults[index]?.hex || 'hsl(var(--primary))'}
-                          strokeWidth={2}
-                          dot={false}
-                          name={`Group ${group}`}
-                          connectNulls={false}
-                        />
-                      ))
+                      groups.map((group, index) => {
+                        const grayShades = ['hsl(218, 11%, 65%)', 'hsl(218, 11%, 55%)', 'hsl(218, 11%, 45%)', 'hsl(218, 11%, 35%)', 'hsl(218, 11%, 25%)'];
+                        return (
+                          <Line 
+                            key={group}
+                            type="monotone" 
+                            dataKey={`group_${group}`}
+                            stroke={colorResults[index]?.hex || grayShades[index % grayShades.length]}
+                            strokeWidth={2}
+                            dot={false}
+                            name={`Group ${group}`}
+                            connectNulls={false}
+                          />
+                        )
+                      })
                     ) : (
                       <Line 
                         type="monotone" 
                         dataKey="intensity" 
-                        stroke={colorResults[0]?.hex || 'hsl(var(--primary))'}
+                        stroke={colorResults[0]?.hex || 'hsl(218, 11%, 50%)'}
                         strokeWidth={2}
                         dot={false}
                         name="Intensity"
