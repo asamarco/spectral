@@ -15,14 +15,6 @@ interface SpectralConverterProps {
 }
 
 export function SpectralConverter({ className }: SpectralConverterProps) {
-  const [spectralInput, setSpectralInput] = useState('');
-  const [colorResults, setColorResults] = useState<ColorResult[]>([]);
-  const [spectralData, setSpectralData] = useState<SpectralData[]>([]);
-  const [groups, setGroups] = useState<number[]>([]);
-  const [currentGroup, setCurrentGroup] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
   const exampleData = `380 0.05
 400 0.08
 420 0.12
@@ -43,6 +35,28 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
 720 0.12
 740 0.06
 760 0.03`;
+
+  // State management - preload with example data
+  const [spectralInput, setSpectralInput] = useState(exampleData);
+  const [colorResults, setColorResults] = useState<ColorResult[]>([]);
+  const [spectralData, setSpectralData] = useState<SpectralData[]>(() => {
+    try {
+      return parseSpectralData(exampleData);
+    } catch {
+      return [];
+    }
+  });
+  const [groups, setGroups] = useState<number[]>(() => {
+    try {
+      const parsed = parseSpectralData(exampleData);
+      return getGroups(parsed);
+    } catch {
+      return [];
+    }
+  });
+  const [currentGroup, setCurrentGroup] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleConvert = useCallback(() => {
     if (!spectralInput.trim()) {
@@ -269,8 +283,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
       </Card>
 
         {/* Plot Section */}
-        {spectralData.length > 0 && (
-          <Card className="data-input">
+        <Card className="data-input">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
@@ -342,7 +355,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               </div>
             </CardContent>
           </Card>
-        )}
       </div>
 
       {/* Results Section */}
