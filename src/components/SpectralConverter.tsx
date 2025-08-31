@@ -344,7 +344,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const [currentGroup, setCurrentGroup] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showNormalized, setShowNormalized] = useState(false);
-  const [applyGammaCorrection, setApplyGammaCorrection] = useState(true);
+  const [applyGammaCorrection, setApplyGammaCorrection] = useState(false);
   const { toast } = useToast();
 
   const handleConvert = useCallback(() => {
