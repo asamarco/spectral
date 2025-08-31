@@ -255,6 +255,19 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             />
           </div>
           
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="gamma-input" 
+                checked={applyGammaCorrection}
+                onCheckedChange={(checked) => setApplyGammaCorrection(checked as boolean)}
+              />
+              <Label htmlFor="gamma-input" className="text-sm">
+                Apply gamma correction (sRGB standard)
+              </Label>
+            </div>
+          </div>
+          
           <div className="flex flex-wrap gap-2">
             <Button 
               onClick={handleConvert} 
@@ -404,17 +417,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                 />
                 <Label htmlFor="normalize" className="text-sm">
                   Show normalized color (divide by max(R,G,B) × 255)
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="gamma" 
-                  checked={applyGammaCorrection}
-                  onCheckedChange={(checked) => setApplyGammaCorrection(checked as boolean)}
-                />
-                <Label htmlFor="gamma" className="text-sm">
-                  Apply gamma correction (sRGB standard)
                 </Label>
               </div>
             </div>
