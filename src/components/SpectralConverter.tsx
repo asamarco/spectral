@@ -58,6 +58,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const [currentGroup, setCurrentGroup] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showNormalized, setShowNormalized] = useState(false);
+  const [applyGammaCorrection, setApplyGammaCorrection] = useState(true);
   const { toast } = useToast();
 
   const handleConvert = useCallback(() => {
@@ -92,7 +93,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         // Convert each group separately
         const results: ColorResult[] = [];
         for (const group of uniqueGroups) {
-          const result = convertSpectrumToColor(parsed, group);
+          const result = convertSpectrumToColor(parsed, group, applyGammaCorrection);
           if (result) {
             results.push(result);
           }
@@ -110,7 +111,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         }
       } else {
         // Single group (no group column)
-        const result = convertSpectrumToColor(parsed);
+        const result = convertSpectrumToColor(parsed, undefined, applyGammaCorrection);
         if (result) {
           setColorResults([result]);
           setGroups([]);
@@ -134,7 +135,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [spectralInput, toast]);
+  }, [spectralInput, toast, applyGammaCorrection]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -394,15 +395,28 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               </div>
             )}
             
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="normalize" 
-                checked={showNormalized}
-                onCheckedChange={(checked) => setShowNormalized(checked as boolean)}
-              />
-              <Label htmlFor="normalize" className="text-sm">
-                Show normalized color (divide by max(R,G,B) × 255)
-              </Label>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="normalize" 
+                  checked={showNormalized}
+                  onCheckedChange={(checked) => setShowNormalized(checked as boolean)}
+                />
+                <Label htmlFor="normalize" className="text-sm">
+                  Show normalized color (divide by max(R,G,B) × 255)
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="gamma" 
+                  checked={applyGammaCorrection}
+                  onCheckedChange={(checked) => setApplyGammaCorrection(checked as boolean)}
+                />
+                <Label htmlFor="gamma" className="text-sm">
+                  Apply gamma correction (sRGB standard)
+                </Label>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

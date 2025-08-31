@@ -80,7 +80,7 @@ function getCMF(wavelength: number): [number, number, number] {
 }
 
 // Convert XYZ to sRGB
-function xyzToRgb(X: number, Y: number, Z: number): [number, number, number] {
+function xyzToRgb(X: number, Y: number, Z: number, applyGammaCorrection: boolean = true): [number, number, number] {
   console.log('XYZ input values:', { X, Y, Z });
   
   // Normalize XYZ values (they should be in range 0-1 for sRGB conversion)
@@ -98,20 +98,24 @@ function xyzToRgb(X: number, Y: number, Z: number): [number, number, number] {
   
   console.log('Linear RGB before gamma:', { r, g, b });
   
-  // Gamma correction (sRGB standard)
-  function gammaCorrect(c: number): number {
-    if (c <= 0.0031308) {
-      return 12.92 * c;
-    } else {
-      return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  // Gamma correction (sRGB standard) - optional
+  if (applyGammaCorrection) {
+    function gammaCorrect(c: number): number {
+      if (c <= 0.0031308) {
+        return 12.92 * c;
+      } else {
+        return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+      }
     }
+    
+    r = gammaCorrect(r);
+    g = gammaCorrect(g);
+    b = gammaCorrect(b);
+    
+    console.log('Gamma corrected RGB:', { r, g, b });
+  } else {
+    console.log('Skipping gamma correction');
   }
-  
-  r = gammaCorrect(r);
-  g = gammaCorrect(g);
-  b = gammaCorrect(b);
-  
-  console.log('Gamma corrected RGB:', { r, g, b });
   
   // Clamp to valid range and scale to 0-255
   r = Math.max(0, Math.min(1, r)) * 255;
@@ -133,7 +137,7 @@ function rgbToHex(r: number, g: number, b: number): string {
 }
 
 // Main conversion function for a specific group
-export function convertSpectrumToColor(spectralData: SpectralData[], group?: number): ColorResult | null {
+export function convertSpectrumToColor(spectralData: SpectralData[], group?: number, applyGammaCorrection: boolean = true): ColorResult | null {
   if (!spectralData || spectralData.length === 0) return null;
   
   // Filter data for specific group if provided
@@ -200,7 +204,7 @@ export function convertSpectrumToColor(spectralData: SpectralData[], group?: num
   const y = normalizedY / total;
   
   // Convert to RGB
-  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ);
+  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ, applyGammaCorrection);
   const hex = rgbToHex(r, g, b);
   
   // Calculate normalized RGB (divide by max(R,G,B) and multiply by 255)
