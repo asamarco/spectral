@@ -1,6 +1,6 @@
 # Spectral Color Converter
 
-A professional web application for converting spectral reflection data into accurate color representations using CIE 1931 color matching functions. This tool is designed for researchers, color scientists, designers, and anyone working with spectral data analysis.
+Web application for converting spectral reflection data into accurate color representations using CIE 1931 color matching functions. This tool is designed for researchers, color scientists, designers, and anyone working with spectral data analysis.
 
 ## Features
 
@@ -8,22 +8,13 @@ A professional web application for converting spectral reflection data into accu
 - **Spectral to Color Conversion**: Transform wavelength-based reflection data (300-800nm) into precise color values
 - **CIE 1931 Standard**: Uses scientifically accurate color matching functions for reliable results
 - **Multi-Angle Support**: Process spectral data at different measurement angles (0°, 15°, 30°, 45°, 60°, 75°)
-- **Real-time Processing**: Instant color preview as you input or modify spectral data
+
 
 ### Advanced Options
 - **Multiple Illuminants**: Support for various standard illuminants (D65, A, C, etc.)
 - **Observer Options**: 2° and 10° standard observer support
 - **Gamma Correction**: Optional gamma correction for display optimization
 - **Data Validation**: Automatic validation of spectral data format and ranges
-
-### User Interface
-- **Intuitive Design**: Clean, professional interface optimized for scientific work
-- **Data Input Methods**: 
-  - Manual text input with validation
-  - File upload support
-  - Copy-paste functionality
-- **Visual Feedback**: Color swatches with RGB/Hex values
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
 
 ## How It Works
 
@@ -44,6 +35,8 @@ wavelength(nm)  angle(degrees)  reflectance(0-1)
 310             0.00           0.55401
 ...
 ```
+Simulated spectra can be created with this online tool by KLA:
+https://www.kla.com/products/instruments/reflectance-calculator?wmin=380&wmax=780&wstep=5&angle=0&pol=mixed&units=nm&mat%5B%5D=Air&d%5B%5D=0&mat%5B%5D=Al2O3&d%5B%5D=100&mat%5B%5D=Si&d%5B%5D=0&sptype=r
 
 ## Technologies Used
 
@@ -61,9 +54,23 @@ wavelength(nm)  angle(degrees)  reflectance(0-1)
 
 ### Installation
 
+Docker images are available for x64 and armv8, it can be run with docker-compose
+
+```yml
+services:
+    treelab:
+        ports:
+            - 80:80
+        image: ghcr.io/asamarco/spectral:latest 
+        container_name: spectral
+        restart: unless-stopped
+```
+
+In alternative:
+
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/asamarco/spectral/
 cd spectral-color-converter
 ```
 
@@ -113,21 +120,9 @@ This tool implements industry-standard color science practices:
 - Safari 14+
 - Edge 90+
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/new-feature`)
-5. Create a Pull Request
-
 ## License
 
 This project is open source and available under the MIT License.
-
-## Support
-
-For questions, issues, or feature requests, please open an issue in the repository or contact the development team.
 
 ---
 
