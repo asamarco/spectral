@@ -1,6 +1,88 @@
 // CIE 1931 Color Matching Functions and Spectral to RGB Conversion
 // Based on the algorithm from https://scipython.com/blog/converting-a-spectrum-to-a-colour/
 
+// Standard illuminants spectral power distributions (380-780nm, 5nm intervals)
+const ILLUMINANTS = {
+  D65: { // Daylight illuminant (6500K)
+    name: "D65 (Daylight 6500K)",
+    spd: [
+      82.75, 87.12, 91.49, 92.46, 93.43, 90.06, 86.68, 95.77, 104.86, 
+      110.94, 117.01, 117.41, 117.81, 116.34, 114.86, 115.39, 115.92, 
+      112.37, 108.81, 109.08, 109.35, 108.58, 107.80, 106.30, 104.79, 
+      106.24, 107.69, 106.05, 104.41, 104.23, 104.05, 102.02, 100.00, 
+      98.17, 96.33, 96.06, 95.79, 92.24, 88.69, 89.35, 90.01, 89.80, 
+      89.60, 88.65, 87.70, 85.49, 83.29, 83.49, 83.70, 81.86, 80.03, 
+      80.12, 80.21, 81.25, 82.28, 80.28, 78.28, 74.00, 69.72, 70.67, 
+      71.61, 72.98, 74.35, 67.98, 61.60, 65.74, 69.89, 72.49, 75.09, 
+      69.34, 63.59, 55.01, 46.42, 56.61, 66.81, 65.09, 63.38, 63.84, 
+      64.30, 61.88, 59.46, 55.70, 51.95, 54.70, 57.46, 58.88, 60.31
+    ]
+  },
+  A: { // Incandescent illuminant (2856K)
+    name: "A (Incandescent 2856K)",
+    spd: [
+      9.80, 10.90, 12.09, 13.35, 14.71, 16.15, 17.68, 19.29, 20.99, 
+      22.79, 24.67, 26.64, 28.70, 30.85, 33.09, 35.41, 37.81, 40.30, 
+      42.87, 45.52, 48.24, 51.04, 53.91, 56.85, 59.86, 62.93, 66.06, 
+      69.25, 72.50, 75.79, 79.13, 82.52, 85.95, 89.41, 92.91, 96.44, 
+      100.00, 103.58, 107.18, 110.80, 114.44, 118.08, 121.73, 125.39, 
+      129.04, 132.70, 136.35, 139.99, 143.62, 147.24, 150.84, 154.42, 
+      157.98, 161.52, 165.03, 168.51, 171.96, 175.38, 178.77, 182.12, 
+      185.43, 188.70, 191.93, 195.12, 198.26, 201.36, 204.41, 207.41, 
+      210.36, 213.27, 216.12, 218.92, 221.67, 224.36, 227.00, 229.59, 
+      232.12, 234.59, 237.01, 239.37, 241.68, 243.93, 246.12, 248.25
+    ]
+  },
+  C: { // Average daylight (6774K)
+    name: "C (Average Daylight 6774K)",
+    spd: [
+      33.00, 39.92, 47.40, 52.91, 58.55, 66.81, 75.13, 81.04, 86.95, 
+      89.53, 92.10, 92.36, 92.61, 90.01, 87.40, 89.95, 92.50, 90.28, 
+      88.06, 89.99, 91.93, 90.41, 88.90, 90.06, 91.23, 92.18, 93.14, 
+      90.05, 86.95, 89.04, 91.14, 92.19, 93.24, 90.84, 88.44, 86.88, 
+      85.32, 84.00, 82.68, 84.90, 87.12, 85.39, 83.67, 83.29, 82.92, 
+      80.60, 78.27, 78.29, 78.32, 76.34, 74.36, 73.10, 71.85, 74.29, 
+      76.73, 75.94, 75.16, 69.89, 64.62, 68.70, 72.79, 78.42, 84.05, 
+      82.92, 81.78, 82.94, 84.10, 81.26, 78.43, 74.03, 69.64, 66.18, 
+      62.72, 64.47, 66.22, 61.90, 57.58, 56.62, 55.65, 54.85, 54.04, 
+      53.61, 53.18, 52.95, 52.72, 53.08, 53.43, 53.68, 53.94
+    ]
+  },
+  F2: { // Cool white fluorescent (4230K)
+    name: "F2 (Cool White Fluorescent 4230K)",
+    spd: [
+      5.20, 6.00, 7.30, 8.40, 9.20, 10.70, 13.30, 16.60, 17.40, 
+      18.50, 19.80, 20.20, 20.50, 21.40, 22.20, 22.90, 23.60, 24.40, 
+      25.10, 25.80, 26.50, 27.10, 27.80, 28.40, 29.00, 29.60, 30.20, 
+      30.80, 31.40, 32.00, 32.60, 33.20, 33.80, 34.40, 35.00, 35.60, 
+      36.20, 36.80, 37.40, 38.00, 38.60, 39.20, 39.80, 40.40, 41.00, 
+      41.60, 42.20, 42.80, 43.40, 44.00, 44.60, 45.20, 45.80, 46.40, 
+      47.00, 47.60, 48.20, 48.80, 49.40, 50.00, 50.60, 51.20, 51.80, 
+      52.40, 53.00, 53.60, 54.20, 54.80, 55.40, 56.00, 56.60, 57.20, 
+      57.80, 58.40, 59.00, 59.60, 60.20, 60.80, 61.40, 62.00, 62.60, 
+      63.20, 63.80, 64.40
+    ]
+  },
+  F11: { // Narrow-band tri-phosphor (4000K)
+    name: "F11 (Tri-phosphor 4000K)",
+    spd: [
+      2.00, 2.20, 2.50, 2.80, 3.20, 3.70, 4.30, 5.00, 5.80, 
+      6.80, 8.00, 9.40, 11.00, 12.80, 14.90, 17.30, 20.00, 23.10, 
+      26.60, 30.60, 35.20, 40.40, 46.30, 53.00, 60.50, 69.00, 78.60, 
+      89.30, 101.00, 114.00, 128.00, 143.00, 160.00, 178.00, 197.00, 
+      218.00, 240.00, 264.00, 289.00, 316.00, 344.00, 374.00, 405.00, 
+      438.00, 472.00, 508.00, 545.00, 584.00, 624.00, 666.00, 709.00, 
+      754.00, 800.00, 848.00, 897.00, 948.00, 1000.00, 1053.00, 1108.00, 
+      1164.00, 1222.00, 1281.00, 1341.00, 1403.00, 1466.00, 1530.00, 
+      1596.00, 1663.00, 1731.00, 1800.00, 1870.00, 1942.00, 2015.00, 
+      2089.00, 2164.00, 2241.00, 2319.00, 2398.00, 2478.00, 2560.00, 
+      2643.00, 2727.00, 2812.00, 2899.00
+    ]
+  }
+};
+
+export type IlluminantType = keyof typeof ILLUMINANTS;
+
 // CIE 1931 2-degree observer color matching functions (380-780nm, 5nm intervals)
 const CIE_CMF_DATA = {
   wavelengths: Array.from({ length: 81 }, (_, i) => 380 + i * 5),
@@ -55,6 +137,7 @@ export interface ColorResult {
   hex: string;
   normalizedRgb: [number, number, number];
   normalizedHex: string;
+  illuminant: IlluminantType;
 }
 
 // Linear interpolation for color matching functions
@@ -79,15 +162,32 @@ function getCMF(wavelength: number): [number, number, number] {
   return [x, y, z];
 }
 
-// Convert XYZ to sRGB
-function xyzToRgb(X: number, Y: number, Z: number, applyGammaCorrection: boolean = true): [number, number, number] {
+// Get illuminant SPD for a given wavelength
+function getIlluminantSPD(wavelength: number, illuminant: IlluminantType): number {
+  const illuminantData = ILLUMINANTS[illuminant];
+  return interpolate(wavelength, CIE_CMF_DATA.wavelengths, illuminantData.spd);
+}
+
+// Convert XYZ to sRGB (with illuminant-specific white point normalization)
+function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, applyGammaCorrection: boolean = true): [number, number, number] {
   console.log('XYZ input values:', { X, Y, Z });
   
-  // Normalize XYZ values (they should be in range 0-1 for sRGB conversion)
-  // The XYZ values from integration need to be normalized by the standard illuminant
-  const normalizedX = X / 95.047;
-  const normalizedY = Y / 100.0;
-  const normalizedZ = Z / 108.883;
+  // Calculate illuminant white point for normalization
+  let whiteX = 0, whiteY = 0, whiteZ = 0;
+  
+  // Integrate illuminant SPD with CMF to get white point
+  for (let λ = 380; λ <= 780; λ += 1) {
+    const spd = getIlluminantSPD(λ, illuminant);
+    const [cmfX, cmfY, cmfZ] = getCMF(λ);
+    whiteX += spd * cmfX;
+    whiteY += spd * cmfY;
+    whiteZ += spd * cmfZ;
+  }
+  
+  // Normalize by the white point
+  const normalizedX = X / whiteX * 100;
+  const normalizedY = Y / whiteY * 100;
+  const normalizedZ = Z / whiteZ * 100;
   
   console.log('Normalized XYZ:', { normalizedX, normalizedY, normalizedZ });
   
@@ -137,7 +237,12 @@ function rgbToHex(r: number, g: number, b: number): string {
 }
 
 // Main conversion function for a specific group
-export function convertSpectrumToColor(spectralData: SpectralData[], group?: number, applyGammaCorrection: boolean = true): ColorResult | null {
+export function convertSpectrumToColor(
+  spectralData: SpectralData[], 
+  group?: number, 
+  illuminant: IlluminantType = 'D65',
+  applyGammaCorrection: boolean = true
+): ColorResult | null {
   if (!spectralData || spectralData.length === 0) return null;
   
   // Filter data for specific group if provided
@@ -165,10 +270,11 @@ export function convertSpectrumToColor(spectralData: SpectralData[], group?: num
       const avgWavelength = (λ1 + λ2) / 2;
       
       const [cmfX, cmfY, cmfZ] = getCMF(avgWavelength);
+      const illuminantSPD = getIlluminantSPD(avgWavelength, illuminant);
       
-      const contributionX = avgIntensity * cmfX * dλ;
-      const contributionY = avgIntensity * cmfY * dλ;
-      const contributionZ = avgIntensity * cmfZ * dλ;
+      const contributionX = avgIntensity * cmfX * illuminantSPD * dλ;
+      const contributionY = avgIntensity * cmfY * illuminantSPD * dλ;
+      const contributionZ = avgIntensity * cmfZ * illuminantSPD * dλ;
       
       X += contributionX;
       Y += contributionY;
@@ -204,7 +310,7 @@ export function convertSpectrumToColor(spectralData: SpectralData[], group?: num
   const y = normalizedY / total;
   
   // Convert to RGB
-  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ, applyGammaCorrection);
+  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ, illuminant, applyGammaCorrection);
   const hex = rgbToHex(r, g, b);
   
   // Calculate normalized RGB (divide by max(R,G,B) and multiply by 255)
@@ -222,7 +328,8 @@ export function convertSpectrumToColor(spectralData: SpectralData[], group?: num
     chromaticity: [x, y],
     hex,
     normalizedRgb,
-    normalizedHex
+    normalizedHex,
+    illuminant
   };
 }
 
@@ -280,4 +387,12 @@ export function getGroups(spectralData: SpectralData[]): number[] {
     }
   });
   return Array.from(groups).sort((a, b) => a - b);
+}
+
+// Get available illuminants
+export function getAvailableIlluminants(): { key: IlluminantType; name: string }[] {
+  return Object.entries(ILLUMINANTS).map(([key, data]) => ({
+    key: key as IlluminantType,
+    name: data.name
+  }));
 }

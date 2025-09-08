@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, Palette, BarChart3, Info, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { convertSpectrumToColor, parseSpectralData, getGroups, type ColorResult, type SpectralData } from '@/lib/spectralConversion';
+import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, type ColorResult, type SpectralData, type IlluminantType } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SpectralConverterProps {
   className?: string;
@@ -345,6 +346,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showNormalized, setShowNormalized] = useState(false);
   const [applyGammaCorrection, setApplyGammaCorrection] = useState(false);
+  const [selectedIlluminant, setSelectedIlluminant] = useState<IlluminantType>('D65');
   const { toast } = useToast();
 
   const handleConvert = useCallback(() => {
@@ -379,7 +381,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         // Convert each group separately
         const results: ColorResult[] = [];
         for (const group of uniqueGroups) {
-          const result = convertSpectrumToColor(parsed, group, applyGammaCorrection);
+          const result = convertSpectrumToColor(parsed, group, selectedIlluminant, applyGammaCorrection);
           if (result) {
             results.push(result);
           }
@@ -397,7 +399,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         }
       } else {
         // Single group (no group column)
-        const result = convertSpectrumToColor(parsed, undefined, applyGammaCorrection);
+        const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, applyGammaCorrection);
         if (result) {
           setColorResults([result]);
           setGroups([]);
@@ -421,7 +423,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [spectralInput, toast, applyGammaCorrection]);
+  }, [spectralInput, toast, selectedIlluminant, applyGammaCorrection]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -542,6 +544,24 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
           </div>
           
           <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="illuminant-select" className="text-sm font-medium">
+                Standard Illuminant
+              </Label>
+              <Select value={selectedIlluminant} onValueChange={(value) => setSelectedIlluminant(value as IlluminantType)}>
+                <SelectTrigger id="illuminant-select" className="bg-card/50 backdrop-blur-sm border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-md border-border/50 z-50">
+                  {getAvailableIlluminants().map((illuminant) => (
+                    <SelectItem key={illuminant.key} value={illuminant.key}>
+                      {illuminant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="gamma-input" 
@@ -752,6 +772,13 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                     <div className="font-mono">
                       x: {colorResults[currentGroup]?.chromaticity[0].toFixed(4)}<br />
                       y: {colorResults[currentGroup]?.chromaticity[1].toFixed(4)}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <div className="text-sm font-medium text-muted-foreground">Standard Illuminant</div>
+                    <div className="font-mono text-sm">
+                      {getAvailableIlluminants().find(ill => ill.key === colorResults[currentGroup]?.illuminant)?.name}
                     </div>
                   </div>
                 </div>
