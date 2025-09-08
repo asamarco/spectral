@@ -58,7 +58,7 @@ Docker images are available for x64 and armv8, it can be run with docker-compose
 
 ```yml
 services:
-    treelab:
+    spectral:
         ports:
             - 80:80
         image: ghcr.io/asamarco/spectral:latest 
