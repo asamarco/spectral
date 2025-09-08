@@ -184,10 +184,10 @@ function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, a
     whiteZ += spd * cmfZ;
   }
   
-  // Normalize by the white point
-  const normalizedX = X / whiteX * 100;
-  const normalizedY = Y / whiteY * 100;
-  const normalizedZ = Z / whiteZ * 100;
+  // Normalize by the white point to get relative XYZ (0..1)
+  const normalizedX = X / whiteX;
+  const normalizedY = Y / whiteY;
+  const normalizedZ = Z / whiteZ;
   
   console.log('Normalized XYZ:', { normalizedX, normalizedY, normalizedZ });
   
