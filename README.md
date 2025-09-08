@@ -1,73 +1,134 @@
-# Welcome to your Lovable project
+# Spectral Color Converter
 
-## Project info
+A professional web application for converting spectral reflection data into accurate color representations using CIE 1931 color matching functions. This tool is designed for researchers, color scientists, designers, and anyone working with spectral data analysis.
 
-**URL**: https://lovable.dev/projects/637e9b79-2857-41f1-b89f-ec2dbb8ea23d
+## Features
 
-## How can I edit this code?
+### Core Functionality
+- **Spectral to Color Conversion**: Transform wavelength-based reflection data (300-800nm) into precise color values
+- **CIE 1931 Standard**: Uses scientifically accurate color matching functions for reliable results
+- **Multi-Angle Support**: Process spectral data at different measurement angles (0°, 15°, 30°, 45°, 60°, 75°)
+- **Real-time Processing**: Instant color preview as you input or modify spectral data
 
-There are several ways of editing your application.
+### Advanced Options
+- **Multiple Illuminants**: Support for various standard illuminants (D65, A, C, etc.)
+- **Observer Options**: 2° and 10° standard observer support
+- **Gamma Correction**: Optional gamma correction for display optimization
+- **Data Validation**: Automatic validation of spectral data format and ranges
 
-**Use Lovable**
+### User Interface
+- **Intuitive Design**: Clean, professional interface optimized for scientific work
+- **Data Input Methods**: 
+  - Manual text input with validation
+  - File upload support
+  - Copy-paste functionality
+- **Visual Feedback**: Color swatches with RGB/Hex values
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/637e9b79-2857-41f1-b89f-ec2dbb8ea23d) and start prompting.
+## How It Works
 
-Changes made via Lovable will be committed automatically to this repo.
+The application implements the CIE 1931 color matching standard to convert spectral reflection data into XYZ color space, then transforms it to RGB for display. The process involves:
 
-**Use your preferred IDE**
+1. **Data Parsing**: Validates and processes spectral reflection data
+2. **Color Matching**: Applies CIE 1931 color matching functions
+3. **Illuminant Correction**: Adjusts for selected illuminant characteristics
+4. **Color Space Conversion**: Transforms XYZ to RGB color space
+5. **Display Optimization**: Optional gamma correction for accurate screen representation
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Input Format
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+The application accepts spectral data in tab-separated format:
+```
+wavelength(nm)  angle(degrees)  reflectance(0-1)
+300             0.00           0.63596
+310             0.00           0.55401
+...
+```
 
-Follow these steps:
+## Technologies Used
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- **React 18**: Modern React with hooks and functional components
+- **TypeScript**: Type-safe development and better code reliability
+- **Vite**: Fast build tool and development server
+- **Tailwind CSS**: Utility-first CSS framework for responsive design
+- **shadcn/ui**: High-quality, accessible UI components
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Getting Started
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn package manager
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd spectral-color-converter
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+4. Open your browser and navigate to `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Building for Production
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The built application will be available in the `dist` directory.
 
-## What technologies are used for this project?
+## Usage Examples
 
-This project is built with:
+### Basic Spectral Data
+Input reflectance values for wavelengths from 300-800nm at specific angles to see the resulting color.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Multi-Angle Analysis
+Compare how the same material appears at different viewing angles by inputting data for multiple angle measurements.
 
-## How can I deploy this project?
+### Color Matching
+Use different illuminants to see how colors appear under various lighting conditions.
 
-Simply open [Lovable](https://lovable.dev/projects/637e9b79-2857-41f1-b89f-ec2dbb8ea23d) and click on Share -> Publish.
+## Scientific Accuracy
 
-## Can I connect a custom domain to my Lovable project?
+This tool implements industry-standard color science practices:
+- CIE 1931 2° Standard Observer color matching functions
+- Standard illuminant data (D65, A, C, etc.)
+- Proper normalization and scaling
+- Scientifically accurate color space transformations
 
-Yes, you can!
+## Browser Compatibility
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
+
+## License
+
+This project is open source and available under the MIT License.
+
+## Support
+
+For questions, issues, or feature requests, please open an issue in the repository or contact the development team.
+
+---
+
+*Built with precision for color science professionals and enthusiasts.*
