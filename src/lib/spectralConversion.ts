@@ -83,8 +83,11 @@ const ILLUMINANTS = {
 
 export type IlluminantType = keyof typeof ILLUMINANTS;
 
+// Observer types
+export type ObserverType = '2' | '10';
+
 // CIE 1931 2-degree observer color matching functions (380-780nm, 5nm intervals)
-const CIE_CMF_DATA = {
+const CIE_CMF_DATA_2DEG = {
   wavelengths: Array.from({ length: 81 }, (_, i) => 380 + i * 5),
   x: [
     0.0014, 0.0022, 0.0042, 0.0076, 0.0143, 0.0232, 0.0435, 0.0776,
@@ -124,6 +127,47 @@ const CIE_CMF_DATA = {
   ]
 };
 
+// CIE 1964 10-degree observer color matching functions (380-780nm, 5nm intervals)
+const CIE_CMF_DATA_10DEG = {
+  wavelengths: Array.from({ length: 81 }, (_, i) => 380 + i * 5),
+  x: [
+    0.0002, 0.0007, 0.0024, 0.0072, 0.0191, 0.0434, 0.0847, 0.1406,
+    0.2045, 0.2647, 0.3147, 0.3577, 0.3837, 0.3867, 0.3707, 0.3430,
+    0.3023, 0.2541, 0.1956, 0.1323, 0.0805, 0.0411, 0.0162, 0.0051,
+    0.0038, 0.0154, 0.0375, 0.0714, 0.1177, 0.1730, 0.2365, 0.3042,
+    0.3738, 0.4334, 0.4788, 0.5085, 0.5182, 0.5115, 0.4888, 0.4511,
+    0.4014, 0.3451, 0.2835, 0.2187, 0.1540, 0.0955, 0.0580, 0.0320,
+    0.0147, 0.0049, 0.0024, 0.0093, 0.0291, 0.0633, 0.1096, 0.1655,
+    0.2257, 0.2904, 0.3597, 0.4334, 0.5121, 0.5945, 0.6784, 0.7621,
+    0.8425, 0.9163, 0.9786, 1.0263, 1.0567, 1.0622, 1.0456, 1.0026,
+    0.9384, 0.8544, 0.7514, 0.6424, 0.5419, 0.4479, 0.3608, 0.2835, 0.2187
+  ],
+  y: [
+    0.0000, 0.0001, 0.0003, 0.0008, 0.0020, 0.0045, 0.0088, 0.0145,
+    0.0214, 0.0295, 0.0387, 0.0496, 0.0621, 0.0747, 0.0895, 0.1063,
+    0.1282, 0.1528, 0.1852, 0.2199, 0.2536, 0.2977, 0.3391, 0.3954,
+    0.4608, 0.5314, 0.6067, 0.6857, 0.7618, 0.8233, 0.8752, 0.9238,
+    0.9620, 0.9822, 0.9918, 0.9991, 0.9973, 0.9824, 0.9556, 0.9152,
+    0.8689, 0.8256, 0.7774, 0.7204, 0.6583, 0.5939, 0.5280, 0.4618,
+    0.3981, 0.3396, 0.2835, 0.2187, 0.1649, 0.1212, 0.0874, 0.0636,
+    0.0468, 0.0329, 0.0227, 0.0158, 0.0114, 0.0081, 0.0058, 0.0041,
+    0.0029, 0.0020, 0.0014, 0.0010, 0.0007, 0.0005, 0.0003, 0.0002,
+    0.0002, 0.0001, 0.0001, 0.0001, 0.0001, 0.0000, 0.0000, 0.0000, 0.0000
+  ],
+  z: [
+    0.0007, 0.0029, 0.0105, 0.0323, 0.0860, 0.1971, 0.3894, 0.6568,
+    0.9725, 1.2825, 1.5535, 1.7985, 1.9673, 2.0273, 1.9948, 1.9007,
+    1.7454, 1.5549, 1.3176, 1.0302, 0.7721, 0.5701, 0.4153, 0.3024,
+    0.2185, 0.1592, 0.1120, 0.0822, 0.0607, 0.0431, 0.0305, 0.0206,
+    0.0137, 0.0079, 0.0040, 0.0016, 0.0007, 0.0003, 0.0001, 0.0000,
+    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000
+  ]
+};
+
 export interface SpectralData {
   wavelength: number;
   intensity: number;
@@ -138,6 +182,7 @@ export interface ColorResult {
   normalizedRgb: [number, number, number];
   normalizedHex: string;
   illuminant: IlluminantType;
+  observer: ObserverType;
 }
 
 // Linear interpolation for color matching functions
@@ -155,21 +200,22 @@ function interpolate(wavelength: number, wavelengths: number[], values: number[]
 }
 
 // Get CIE color matching function values for a given wavelength
-function getCMF(wavelength: number): [number, number, number] {
-  const x = interpolate(wavelength, CIE_CMF_DATA.wavelengths, CIE_CMF_DATA.x);
-  const y = interpolate(wavelength, CIE_CMF_DATA.wavelengths, CIE_CMF_DATA.y);
-  const z = interpolate(wavelength, CIE_CMF_DATA.wavelengths, CIE_CMF_DATA.z);
+function getCMF(wavelength: number, observer: ObserverType = '2'): [number, number, number] {
+  const cmfData = observer === '10' ? CIE_CMF_DATA_10DEG : CIE_CMF_DATA_2DEG;
+  const x = interpolate(wavelength, cmfData.wavelengths, cmfData.x);
+  const y = interpolate(wavelength, cmfData.wavelengths, cmfData.y);
+  const z = interpolate(wavelength, cmfData.wavelengths, cmfData.z);
   return [x, y, z];
 }
 
 // Get illuminant SPD for a given wavelength
 function getIlluminantSPD(wavelength: number, illuminant: IlluminantType): number {
   const illuminantData = ILLUMINANTS[illuminant];
-  return interpolate(wavelength, CIE_CMF_DATA.wavelengths, illuminantData.spd);
+  return interpolate(wavelength, CIE_CMF_DATA_2DEG.wavelengths, illuminantData.spd);
 }
 
 // Convert XYZ to sRGB (with illuminant-specific white point normalization)
-function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, applyGammaCorrection: boolean = true): [number, number, number] {
+function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, observer: ObserverType = '2', applyGammaCorrection: boolean = true): [number, number, number] {
   console.log('XYZ input values:', { X, Y, Z });
   
   // Calculate illuminant white point for normalization
@@ -178,7 +224,7 @@ function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, a
   // Integrate illuminant SPD with CMF to get white point
   for (let λ = 380; λ <= 780; λ += 1) {
     const spd = getIlluminantSPD(λ, illuminant);
-    const [cmfX, cmfY, cmfZ] = getCMF(λ);
+    const [cmfX, cmfY, cmfZ] = getCMF(λ, observer);
     whiteX += spd * cmfX;
     whiteY += spd * cmfY;
     whiteZ += spd * cmfZ;
@@ -241,6 +287,7 @@ export function convertSpectrumToColor(
   spectralData: SpectralData[], 
   group?: number, 
   illuminant: IlluminantType = 'D65',
+  observer: ObserverType = '2',
   applyGammaCorrection: boolean = true
 ): ColorResult | null {
   if (!spectralData || spectralData.length === 0) return null;
@@ -269,7 +316,7 @@ export function convertSpectrumToColor(
       const avgIntensity = (I1 + I2) / 2;
       const avgWavelength = (λ1 + λ2) / 2;
       
-      const [cmfX, cmfY, cmfZ] = getCMF(avgWavelength);
+      const [cmfX, cmfY, cmfZ] = getCMF(avgWavelength, observer);
       const illuminantSPD = getIlluminantSPD(avgWavelength, illuminant);
       
       const contributionX = avgIntensity * cmfX * illuminantSPD * dλ;
@@ -310,7 +357,7 @@ export function convertSpectrumToColor(
   const y = normalizedY / total;
   
   // Convert to RGB
-  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ, illuminant, applyGammaCorrection);
+  const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ, illuminant, observer, applyGammaCorrection);
   const hex = rgbToHex(r, g, b);
   
   // Calculate normalized RGB (divide by max(R,G,B) and multiply by 255)
@@ -329,7 +376,8 @@ export function convertSpectrumToColor(
     hex,
     normalizedRgb,
     normalizedHex,
-    illuminant
+    illuminant,
+    observer
   };
 }
 
@@ -395,4 +443,12 @@ export function getAvailableIlluminants(): { key: IlluminantType; name: string }
     key: key as IlluminantType,
     name: data.name
   }));
+}
+
+// Get available observers
+export function getAvailableObservers(): { key: ObserverType; name: string }[] {
+  return [
+    { key: '2', name: '2° Standard Observer (CIE 1931)' },
+    { key: '10', name: '10° Standard Observer (CIE 1964)' }
+  ];
 }

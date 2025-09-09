@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, Palette, BarChart3, Info, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, type ColorResult, type SpectralData, type IlluminantType } from '@/lib/spectralConversion';
+import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -347,6 +347,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const [showNormalized, setShowNormalized] = useState(false);
   const [applyGammaCorrection, setApplyGammaCorrection] = useState(false);
   const [selectedIlluminant, setSelectedIlluminant] = useState<IlluminantType>('D65');
+  const [selectedObserver, setSelectedObserver] = useState<ObserverType>('2');
   const { toast } = useToast();
 
   const handleConvert = useCallback(() => {
@@ -381,7 +382,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         // Convert each group separately
         const results: ColorResult[] = [];
         for (const group of uniqueGroups) {
-          const result = convertSpectrumToColor(parsed, group, selectedIlluminant, applyGammaCorrection);
+          const result = convertSpectrumToColor(parsed, group, selectedIlluminant, selectedObserver, applyGammaCorrection);
           if (result) {
             results.push(result);
           }
@@ -399,7 +400,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         }
       } else {
         // Single group (no group column)
-        const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, applyGammaCorrection);
+        const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, selectedObserver, applyGammaCorrection);
         if (result) {
           setColorResults([result]);
           setGroups([]);
@@ -423,7 +424,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [spectralInput, toast, selectedIlluminant, applyGammaCorrection]);
+  }, [spectralInput, toast, selectedIlluminant, selectedObserver, applyGammaCorrection]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -556,6 +557,24 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   {getAvailableIlluminants().map((illuminant) => (
                     <SelectItem key={illuminant.key} value={illuminant.key}>
                       {illuminant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="observer-select" className="text-sm font-medium">
+                Standard Observer
+              </Label>
+              <Select value={selectedObserver} onValueChange={(value) => setSelectedObserver(value as ObserverType)}>
+                <SelectTrigger id="observer-select" className="bg-card/50 backdrop-blur-sm border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-md border-border/50 z-50">
+                  {getAvailableObservers().map((observer) => (
+                    <SelectItem key={observer.key} value={observer.key}>
+                      {observer.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -695,7 +714,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             <CardDescription>
               {groups.length > 1 
                 ? `Showing color from group ${groups[currentGroup]} (${currentGroup + 1} of ${groups.length}). Use the slider to switch between groups.`
-                : `Converted color from ${spectralData.length} spectral data points using CIE 1931 color matching functions.`
+                : `Converted color from ${spectralData.length} spectral data points using CIE color matching functions.`
               }
             </CardDescription>
           </CardHeader>
@@ -781,6 +800,13 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                       {getAvailableIlluminants().find(ill => ill.key === colorResults[currentGroup]?.illuminant)?.name}
                     </div>
                   </div>
+                  
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <div className="text-sm font-medium text-muted-foreground">Standard Observer</div>
+                    <div className="font-mono text-sm">
+                      {getAvailableObservers().find(obs => obs.key === colorResults[currentGroup]?.observer)?.name}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -798,13 +824,13 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         </CardHeader>
         <CardContent className="prose prose-sm dark:prose-invert max-w-none">
           <p>
-            This tool converts spectral reflection/transmission data to colors using the <strong>CIE 1931 color matching functions</strong>. 
+            This tool converts spectral reflection/transmission data to colors using <strong>CIE standard color matching functions</strong> with support for both 2° (CIE 1931) and 10° (CIE 1964) standard observers. 
             The conversion process:
           </p>
           <ol>
-            <li>Integrates your spectral data with CIE color matching functions (x̄, ȳ, z̄)</li>
-            <li>Calculates tristimulus values (X, Y, Z)</li>
-            <li>Converts to sRGB color space with gamma correction</li>
+            <li>Integrates your spectral data with CIE color matching functions (x̄, ȳ, z̄) for the selected observer</li>
+            <li>Calculates tristimulus values (X, Y, Z) weighted by the selected illuminant</li>
+            <li>Converts to sRGB color space with optional gamma correction</li>
             <li>Normalizes chromaticity coordinates</li>
           </ol>
           <p>
