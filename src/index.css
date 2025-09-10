@@ -131,6 +131,57 @@
     backdrop-filter: blur(8px);
   }
   
+  .spectrum-swatch-gloss {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spectrum-swatch-gloss::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent
+    );
+    transform: skewX(-25deg);
+    animation: glossSweep 2s ease-in-out infinite;
+  }
+
+  .spectrum-swatch-gloss::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 15%;
+    width: 30%;
+    height: 40%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 100%
+    );
+    border-radius: 50%;
+    filter: blur(8px);
+  }
+
+  @keyframes glossSweep {
+    0% {
+      left: -100%;
+    }
+    50% {
+      left: 100%;
+    }
+    100% {
+      left: 100%;
+    }
+  }
+  
   .data-input {
     @apply bg-card/80 backdrop-blur-sm border border-border/50;
     box-shadow: var(--shadow-soft);

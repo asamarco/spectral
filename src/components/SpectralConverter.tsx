@@ -348,6 +348,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const [applyGammaCorrection, setApplyGammaCorrection] = useState(false);
   const [selectedIlluminant, setSelectedIlluminant] = useState<IlluminantType>('D65');
   const [selectedObserver, setSelectedObserver] = useState<ObserverType>('2');
+  const [showGloss, setShowGloss] = useState(false);
   const { toast } = useToast();
 
   const handleConvert = useCallback(() => {
@@ -760,6 +761,17 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   Show normalized color (divide by max(R,G,B) × 255)
                 </Label>
               </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="gloss" 
+                  checked={showGloss}
+                  onCheckedChange={(checked) => setShowGloss(checked as boolean)}
+                />
+                <Label htmlFor="gloss" className="text-sm">
+                  Show gloss effect
+                </Label>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -767,7 +779,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               <div className="space-y-4">
                 <h3 className="font-semibold">Color Preview</h3>
                 <div 
-                  className="spectrum-swatch h-32 w-full rounded-lg"
+                  className={`spectrum-swatch h-32 w-full rounded-lg ${showGloss ? 'spectrum-swatch-gloss' : ''}`}
                   style={{ backgroundColor: showNormalized ? colorResults[currentGroup]?.normalizedHex : colorResults[currentGroup]?.hex }}
                 />
                 <div className="text-center">
