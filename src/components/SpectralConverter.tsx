@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Upload, Palette, BarChart3, Info, TrendingUp } from 'lucide-react';
+import { Upload, Palette, BarChart3, Info, TrendingUp, ExternalLink } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
@@ -605,6 +605,22 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             
             <Button variant="outline" onClick={useExample}>
               Use Example Data
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              asChild
+              className="bg-card/50 hover:bg-card/70"
+            >
+              <a 
+                href="https://www.kla.com/products/instruments/reflectance-calculator?wmin=380&wmax=780&wstep=5&angle=0&pol=mixed&units=nm&mat%5B%5D=Air&d%5B%5D=0&mat%5B%5D=Al2O3&d%5B%5D=100&mat%5B%5D=Si&d%5B%5D=0&sptype=r" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Simulate Spectrum (KLA)
+              </a>
             </Button>
             
             <div className="relative">
