@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ChromaticityDiagram from './ChromaticityDiagram';
 
 interface SpectralConverterProps {
   className?: string;
@@ -774,69 +775,80 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Color Swatch */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Color Preview</h3>
-                <div 
-                  className={`spectrum-swatch h-32 w-full rounded-lg ${showGloss ? 'spectrum-swatch-gloss' : ''}`}
-                  style={{ backgroundColor: showNormalized ? colorResults[currentGroup]?.normalizedHex : colorResults[currentGroup]?.hex }}
-                />
-                <div className="text-center">
-                  <div className="text-2xl font-mono font-bold">
-                    {showNormalized ? colorResults[currentGroup]?.normalizedHex.toUpperCase() : colorResults[currentGroup]?.hex.toUpperCase()}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Color Swatch */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Color Preview</h3>
+                  <div 
+                    className={`spectrum-swatch h-32 w-full rounded-lg ${showGloss ? 'spectrum-swatch-gloss' : ''}`}
+                    style={{ backgroundColor: showNormalized ? colorResults[currentGroup]?.normalizedHex : colorResults[currentGroup]?.hex }}
+                  />
+                  <div className="text-center">
+                    <div className="text-2xl font-mono font-bold">
+                      {showNormalized ? colorResults[currentGroup]?.normalizedHex.toUpperCase() : colorResults[currentGroup]?.hex.toUpperCase()}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {showNormalized ? 'Normalized Hex Color Code' : 'Hex Color Code'}
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {showNormalized ? 'Normalized Hex Color Code' : 'Hex Color Code'}
+                </div>
+                
+                {/* Color Values */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Color Values</h3>
+                  <div className="space-y-3">
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">
+                        {showNormalized ? 'Normalized RGB' : 'RGB'}
+                      </div>
+                      <div className="font-mono">
+                        R: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[0] : colorResults[currentGroup]?.rgb[0]}, G: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[1] : colorResults[currentGroup]?.rgb[1]}, B: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[2] : colorResults[currentGroup]?.rgb[2]}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">CIE XYZ</div>
+                      <div className="font-mono text-sm">
+                        X: {colorResults[currentGroup]?.xyz[0].toFixed(4)}<br />
+                        Y: {colorResults[currentGroup]?.xyz[1].toFixed(4)}<br />
+                        Z: {colorResults[currentGroup]?.xyz[2].toFixed(4)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">Chromaticity (x,y)</div>
+                      <div className="font-mono">
+                        x: {colorResults[currentGroup]?.chromaticity[0].toFixed(4)}<br />
+                        y: {colorResults[currentGroup]?.chromaticity[1].toFixed(4)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">Standard Illuminant</div>
+                      <div className="font-mono text-sm">
+                        {getAvailableIlluminants().find(ill => ill.key === colorResults[currentGroup]?.illuminant)?.name}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">Standard Observer</div>
+                      <div className="font-mono text-sm">
+                        {getAvailableObservers().find(obs => obs.key === colorResults[currentGroup]?.observer)?.name}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
               
-              {/* Color Values */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Color Values</h3>
-                <div className="space-y-3">
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {showNormalized ? 'Normalized RGB' : 'RGB'}
-                    </div>
-                    <div className="font-mono">
-                      R: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[0] : colorResults[currentGroup]?.rgb[0]}, G: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[1] : colorResults[currentGroup]?.rgb[1]}, B: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[2] : colorResults[currentGroup]?.rgb[2]}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-muted-foreground">CIE XYZ</div>
-                    <div className="font-mono text-sm">
-                      X: {colorResults[currentGroup]?.xyz[0].toFixed(4)}<br />
-                      Y: {colorResults[currentGroup]?.xyz[1].toFixed(4)}<br />
-                      Z: {colorResults[currentGroup]?.xyz[2].toFixed(4)}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-muted-foreground">Chromaticity (x,y)</div>
-                    <div className="font-mono">
-                      x: {colorResults[currentGroup]?.chromaticity[0].toFixed(4)}<br />
-                      y: {colorResults[currentGroup]?.chromaticity[1].toFixed(4)}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-muted-foreground">Standard Illuminant</div>
-                    <div className="font-mono text-sm">
-                      {getAvailableIlluminants().find(ill => ill.key === colorResults[currentGroup]?.illuminant)?.name}
-                    </div>
-                  </div>
-                  
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-muted-foreground">Standard Observer</div>
-                    <div className="font-mono text-sm">
-                      {getAvailableObservers().find(obs => obs.key === colorResults[currentGroup]?.observer)?.name}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Chromaticity Diagram */}
+              <ChromaticityDiagram 
+                chromaticity={{
+                  x: colorResults[currentGroup]?.chromaticity[0] || 0,
+                  y: colorResults[currentGroup]?.chromaticity[1] || 0
+                }}
+                observer={colorResults[currentGroup]?.observer}
+              />
             </div>
           </CardContent>
         </Card>
