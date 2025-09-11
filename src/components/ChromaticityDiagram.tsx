@@ -1,5 +1,5 @@
 import React from 'react';
-import { ResponsiveContainer, ScatterChart, XAxis, YAxis, CartesianGrid, Scatter, Cell, Line, LineChart, Text, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, ScatterChart, XAxis, YAxis, CartesianGrid, Scatter, Cell, Line, LineChart } from 'recharts';
 
 interface ChromaticityDiagramProps {
   chromaticity?: {
@@ -490,73 +490,18 @@ const PURPLE_LINE = [
   { x: 0.73469, y: 0.26531 }  // 830nm
 ];
 
-// Standard illuminant coordinates - filtered to requested ones
+// Standard illuminant coordinates
 const ILLUMINANTS = {
-  A: { x: 0.44757, y: 0.40745, name: "A (2856K)" },
-  C: { x: 0.31006, y: 0.31616, name: "C (6774K)" },
-  D65: { x: 0.31271, y: 0.32902, name: "D65 (6504K)" },
-  F2: { x: 0.37208, y: 0.37529, name: "F2 (4230K)" },
-  F11: { x: 0.38052, y: 0.37713, name: "F11 (4000K)" }
+  A: { x: 0.44757, y: 0.40745 },
+  C: { x: 0.31006, y: 0.31616 },
+  D50: { x: 0.34567, y: 0.35850 },
+  D55: { x: 0.33242, y: 0.34743 },
+  D65: { x: 0.31271, y: 0.32902 },
+  D75: { x: 0.29902, y: 0.31485 },
+  F2: { x: 0.37208, y: 0.37529 },
+  F7: { x: 0.31292, y: 0.32933 },
+  F11: { x: 0.38052, y: 0.37713 }
 };
-
-// Wavelength labels for key points
-const WAVELENGTH_LABELS = [
-  { wavelength: 380, x: 0.17411, y: 0.00496 },
-  { wavelength: 400, x: 0.17334, y: 0.00480 },
-  { wavelength: 450, x: 0.15664, y: 0.01771 },
-  { wavelength: 500, x: 0.00817, y: 0.53842 },
-  { wavelength: 520, x: 0.07430, y: 0.83380 },
-  { wavelength: 550, x: 0.30160, y: 0.69231 },
-  { wavelength: 580, x: 0.51249, y: 0.48659 },
-  { wavelength: 600, x: 0.62704, y: 0.37249 },
-  { wavelength: 650, x: 0.72599, y: 0.27401 },
-  { wavelength: 700, x: 0.73469, y: 0.26531 }
-];
-
-// Function to convert wavelength to approximate RGB color for parametric display
-function wavelengthToRGB(wavelength: number): string {
-  let r = 0, g = 0, b = 0;
-  
-  if (wavelength >= 380 && wavelength <= 440) {
-    r = -(wavelength - 440) / (440 - 380);
-    g = 0.0;
-    b = 1.0;
-  } else if (wavelength >= 440 && wavelength <= 490) {
-    r = 0.0;
-    g = (wavelength - 440) / (490 - 440);
-    b = 1.0;
-  } else if (wavelength >= 490 && wavelength <= 510) {
-    r = 0.0;
-    g = 1.0;
-    b = -(wavelength - 510) / (510 - 490);
-  } else if (wavelength >= 510 && wavelength <= 580) {
-    r = (wavelength - 510) / (580 - 510);
-    g = 1.0;
-    b = 0.0;
-  } else if (wavelength >= 580 && wavelength <= 645) {
-    r = 1.0;
-    g = -(wavelength - 645) / (645 - 580);
-    b = 0.0;
-  } else if (wavelength >= 645 && wavelength <= 750) {
-    r = 1.0;
-    g = 0.0;
-    b = 0.0;
-  }
-  
-  // Intensity correction near the vision limits
-  let factor = 1.0;
-  if (wavelength >= 380 && wavelength <= 420) {
-    factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
-  } else if (wavelength >= 700 && wavelength <= 750) {
-    factor = 0.3 + 0.7 * (750 - wavelength) / (750 - 700);
-  }
-  
-  r = Math.round(255 * r * factor);
-  g = Math.round(255 * g * factor);
-  b = Math.round(255 * b * factor);
-  
-  return `rgb(${r},${g},${b})`;
-}
 
 const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({ 
   chromaticity, 
@@ -569,6 +514,9 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
     wavelength: point.wavelength
   }));
 
+  // Add the purple line closure
+  const boundaryData = [...spectralLocusData, ...PURPLE_LINE];
+
   // Current color point
   const colorPoint = chromaticity ? [{ 
     x: chromaticity.x, 
@@ -577,184 +525,91 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
   }] : [];
 
   // Illuminant points
-  const illuminantPoints = Object.entries(ILLUMINANTS).map(([key, data]) => ({
-    x: data.x,
-    y: data.y,
-    name: key,
-    fullName: data.name,
+  const illuminantPoints = Object.entries(ILLUMINANTS).map(([name, coords]) => ({
+    x: coords.x,
+    y: coords.y,
+    name,
     type: 'illuminant'
   }));
 
   return (
-    <div className="w-full bg-card rounded-lg border p-4">
+    <div className="w-full h-96 bg-card rounded-lg border p-4">
       <h3 className="text-lg font-semibold mb-4 text-center">
         CIE 1931 Chromaticity Diagram ({observer}° Observer)
       </h3>
-      
-      {/* Parametric Color Bar */}
-      <div className="mb-4">
-        <div className="text-sm font-medium mb-2">Spectral Colors (380-700nm)</div>
-        <div className="h-6 rounded flex overflow-hidden border border-border">
-          {Array.from({ length: 33 }, (_, i) => {
-            const wavelength = 380 + i * 10;
-            return (
-              <div
-                key={wavelength}
-                className="flex-1 relative group cursor-pointer"
-                style={{ backgroundColor: wavelengthToRGB(wavelength) }}
-                title={`${wavelength}nm`}
-              >
-                {wavelength % 50 === 0 && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 text-xs text-foreground/70 mb-1">
-                    {wavelength}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="h-[500px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart
-            margin={{ top: 20, right: 30, bottom: 60, left: 60 }}
-            data={spectralLocusData}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-            <XAxis 
-              type="number"
-              dataKey="x"
-              domain={[0, 0.8]}
-              tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'CIE x', position: 'insideBottom', offset: -15, style: { textAnchor: 'middle', fontSize: 14, fontWeight: 'bold' } }}
-            />
-            <YAxis 
-              type="number"
-              dataKey="y"
-              domain={[0, 0.9]}
-              tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'CIE y', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 14, fontWeight: 'bold' } }}
-            />
-            
-            {/* Spectral locus boundary */}
-            <Scatter 
-              data={spectralLocusData} 
-              fill="none"
-              line={{ stroke: 'hsl(var(--primary))', strokeWidth: 3 }}
-              shape="circle"
-              r={0}
-            />
-            
-            {/* Purple line */}
-            <Scatter 
-              data={PURPLE_LINE} 
-              fill="transparent"
-              line={{ stroke: 'hsl(var(--primary))', strokeWidth: 3, strokeDasharray: '8,4' }}
-              shape="circle"
-              r={0}
-            />
-            
-            {/* Wavelength points and labels */}
-            {WAVELENGTH_LABELS.map((label, i) => {
-              // Calculate position based on chart dimensions and domain
-              const chartWidth = 800 - 60 - 30; // total width minus margins
-              const chartHeight = 500 - 20 - 60; // total height minus margins
-              const xPos = 60 + (label.x / 0.8) * chartWidth; // normalize by domain max (0.8)
-              const yPos = 20 + chartHeight - (label.y / 0.9) * chartHeight; // normalize by domain max (0.9)
-              
-              return (
-                <g key={`wl-group-${i}`}>
-                  <circle
-                    cx={xPos}
-                    cy={yPos}
-                    r="3"
-                    fill="hsl(var(--primary))"
-                    stroke="white"
-                    strokeWidth="2"
-                  />
-                  <text 
-                    x={xPos} 
-                    y={yPos - 10}
-                    fontSize="11"
-                    fontWeight="bold"
-                    fill="hsl(var(--foreground))"
-                    textAnchor="middle"
-                    stroke="hsl(var(--background))"
-                    strokeWidth="2"
-                    paintOrder="stroke"
-                  >
-                    {label.wavelength}
-                  </text>
-                </g>
-              );
-            })}
-            
-            {/* Illuminant points */}
-            <Scatter data={illuminantPoints}>
-              {illuminantPoints.map((entry, index) => (
-                <Cell key={`illuminant-${index}`} fill="hsl(var(--secondary))" r={5} stroke="white" strokeWidth={2} />
-              ))}
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart
+          margin={{ top: 20, right: 30, bottom: 40, left: 40 }}
+          data={boundaryData}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
+          <XAxis 
+            type="number"
+            dataKey="x"
+            domain={[0, 0.8]}
+            tick={{ fontSize: 12 }}
+            label={{ value: 'x', position: 'insideBottom', offset: -10 }}
+          />
+          <YAxis 
+            type="number"
+            dataKey="y"
+            domain={[0, 0.9]}
+            tick={{ fontSize: 12 }}
+            label={{ value: 'y', angle: -90, position: 'insideLeft' }}
+          />
+          
+          {/* Spectral locus boundary */}
+          <Scatter 
+            data={spectralLocusData} 
+            fill="hsl(var(--primary))"
+            line={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+            shape="circle"
+            r={0}
+          />
+          
+          {/* Purple line */}
+          <Scatter 
+            data={PURPLE_LINE} 
+            fill="transparent"
+            line={{ stroke: 'hsl(var(--primary))', strokeWidth: 2, strokeDasharray: '5,5' }}
+            shape="circle"
+            r={0}
+          />
+          
+          {/* Illuminant points */}
+          <Scatter data={illuminantPoints}>
+            {illuminantPoints.map((entry, index) => (
+              <Cell key={`illuminant-${index}`} fill="hsl(var(--muted-foreground))" r={3} />
+            ))}
+          </Scatter>
+          
+          {/* Current color point */}
+          {colorPoint.length > 0 && (
+            <Scatter data={colorPoint}>
+              <Cell fill="hsl(var(--destructive))" r={6} stroke="white" strokeWidth={2} />
             </Scatter>
-            
-            {/* Illuminant labels */}
-            {illuminantPoints.map((point, i) => {
-              // Calculate position based on chart dimensions and domain
-              const chartWidth = 800 - 60 - 30; // total width minus margins
-              const chartHeight = 500 - 20 - 60; // total height minus margins
-              const xPos = 60 + (point.x / 0.8) * chartWidth; // normalize by domain max (0.8)
-              const yPos = 20 + chartHeight - (point.y / 0.9) * chartHeight; // normalize by domain max (0.9)
-              
-              return (
-                <text 
-                  key={`ill-${i}`}
-                  x={xPos} 
-                  y={yPos - 15}
-                  fontSize="10"
-                  fontWeight="bold"
-                  fill="hsl(var(--secondary-foreground))"
-                  textAnchor="middle"
-                  stroke="hsl(var(--background))"
-                  strokeWidth="2"
-                  paintOrder="stroke"
-                >
-                  {point.fullName}
-                </text>
-              );
-            })}
-            
-            {/* Current color point */}
-            {colorPoint.length > 0 && (
-              <Scatter data={colorPoint}>
-                <Cell fill="hsl(var(--destructive))" r={8} stroke="white" strokeWidth={3} />
-              </Scatter>
-            )}
-          </ScatterChart>
-        </ResponsiveContainer>
-      </div>
+          )}
+        </ScatterChart>
+      </ResponsiveContainer>
       
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-0.5 bg-primary"></div>
+          <div className="w-3 h-0.5 bg-primary"></div>
           <span>Spectral Locus</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-0.5 border-t-2 border-dashed border-primary"></div>
+          <div className="w-3 h-0.5 border-t-2 border-dashed border-primary"></div>
           <span>Purple Line</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-primary border-2 border-white"></div>
-          <span>Wavelength Markers</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-secondary border-2 border-white"></div>
-          <span>Standard Illuminants</span>
+          <div className="w-3 h-3 rounded-full bg-muted-foreground"></div>
+          <span>Illuminants</span>
         </div>
         {chromaticity && (
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full bg-destructive border-2 border-white"></div>
-            <span>Current Color (x={chromaticity.x.toFixed(4)}, y={chromaticity.y.toFixed(4)})</span>
+            <div className="w-3 h-3 rounded-full bg-destructive border border-white"></div>
+            <span>Current Color ({chromaticity.x.toFixed(4)}, {chromaticity.y.toFixed(4)})</span>
           </div>
         )}
       </div>

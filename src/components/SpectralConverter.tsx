@@ -839,16 +839,16 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                     </div>
                   </div>
                 </div>
-                
-                {/* Chromaticity Diagram */}
-                <ChromaticityDiagram 
-                  chromaticity={{
-                    x: colorResults[currentGroup]?.chromaticity[0] || 0,
-                    y: colorResults[currentGroup]?.chromaticity[1] || 0
-                  }}
-                  observer={colorResults[currentGroup]?.observer}
-                />
               </div>
+              
+              {/* Chromaticity Diagram */}
+              <ChromaticityDiagram 
+                chromaticity={{
+                  x: colorResults[currentGroup]?.chromaticity[0] || 0,
+                  y: colorResults[currentGroup]?.chromaticity[1] || 0
+                }}
+                observer={colorResults[currentGroup]?.observer}
+              />
             </div>
           </CardContent>
         </Card>
