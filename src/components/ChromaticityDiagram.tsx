@@ -490,16 +490,12 @@ const PURPLE_LINE = [
   { x: 0.73469, y: 0.26531 }  // 830nm
 ];
 
-// Standard illuminant coordinates
+// Standard illuminant coordinates - filtered to requested ones
 const ILLUMINANTS = {
   A: { x: 0.44757, y: 0.40745, name: "A (2856K)" },
   C: { x: 0.31006, y: 0.31616, name: "C (6774K)" },
-  D50: { x: 0.34567, y: 0.35850, name: "D50 (5003K)" },
-  D55: { x: 0.33242, y: 0.34743, name: "D55 (5503K)" },
   D65: { x: 0.31271, y: 0.32902, name: "D65 (6504K)" },
-  D75: { x: 0.29902, y: 0.31485, name: "D75 (7504K)" },
   F2: { x: 0.37208, y: 0.37529, name: "F2 (4230K)" },
-  F7: { x: 0.31292, y: 0.32933, name: "F7 (6500K)" },
   F11: { x: 0.38052, y: 0.37713, name: "F11 (4000K)" }
 };
 
@@ -660,31 +656,39 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
             />
             
             {/* Wavelength points and labels */}
-            {WAVELENGTH_LABELS.map((label, i) => (
-              <g key={`wl-group-${i}`}>
-                <circle
-                  cx={label.x * 800 + 60}
-                  cy={500 - label.y * 444 + 20}
-                  r="3"
-                  fill="hsl(var(--primary))"
-                  stroke="white"
-                  strokeWidth="2"
-                />
-                <text 
-                  x={label.x * 800 + 60} 
-                  y={500 - label.y * 444 + 20 - 10}
-                  fontSize="11"
-                  fontWeight="bold"
-                  fill="hsl(var(--foreground))"
-                  textAnchor="middle"
-                  stroke="hsl(var(--background))"
-                  strokeWidth="2"
-                  paintOrder="stroke"
-                >
-                  {label.wavelength}
-                </text>
-              </g>
-            ))}
+            {WAVELENGTH_LABELS.map((label, i) => {
+              // Calculate position based on chart dimensions and domain
+              const chartWidth = 800 - 60 - 30; // total width minus margins
+              const chartHeight = 500 - 20 - 60; // total height minus margins
+              const xPos = 60 + (label.x / 0.8) * chartWidth; // normalize by domain max (0.8)
+              const yPos = 20 + chartHeight - (label.y / 0.9) * chartHeight; // normalize by domain max (0.9)
+              
+              return (
+                <g key={`wl-group-${i}`}>
+                  <circle
+                    cx={xPos}
+                    cy={yPos}
+                    r="3"
+                    fill="hsl(var(--primary))"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                  <text 
+                    x={xPos} 
+                    y={yPos - 10}
+                    fontSize="11"
+                    fontWeight="bold"
+                    fill="hsl(var(--foreground))"
+                    textAnchor="middle"
+                    stroke="hsl(var(--background))"
+                    strokeWidth="2"
+                    paintOrder="stroke"
+                  >
+                    {label.wavelength}
+                  </text>
+                </g>
+              );
+            })}
             
             {/* Illuminant points */}
             <Scatter data={illuminantPoints}>
@@ -694,22 +698,30 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
             </Scatter>
             
             {/* Illuminant labels */}
-            {illuminantPoints.map((point, i) => (
-              <text 
-                key={`ill-${i}`}
-                x={point.x * 800 + 60} 
-                y={500 - point.y * 444 + 20 - 15}
-                fontSize="10"
-                fontWeight="bold"
-                fill="hsl(var(--secondary-foreground))"
-                textAnchor="middle"
-                stroke="hsl(var(--background))"
-                strokeWidth="2"
-                paintOrder="stroke"
-              >
-                {point.fullName}
-              </text>
-            ))}
+            {illuminantPoints.map((point, i) => {
+              // Calculate position based on chart dimensions and domain
+              const chartWidth = 800 - 60 - 30; // total width minus margins
+              const chartHeight = 500 - 20 - 60; // total height minus margins
+              const xPos = 60 + (point.x / 0.8) * chartWidth; // normalize by domain max (0.8)
+              const yPos = 20 + chartHeight - (point.y / 0.9) * chartHeight; // normalize by domain max (0.9)
+              
+              return (
+                <text 
+                  key={`ill-${i}`}
+                  x={xPos} 
+                  y={yPos - 15}
+                  fontSize="10"
+                  fontWeight="bold"
+                  fill="hsl(var(--secondary-foreground))"
+                  textAnchor="middle"
+                  stroke="hsl(var(--background))"
+                  strokeWidth="2"
+                  paintOrder="stroke"
+                >
+                  {point.fullName}
+                </text>
+              );
+            })}
             
             {/* Current color point */}
             {colorPoint.length > 0 && (
