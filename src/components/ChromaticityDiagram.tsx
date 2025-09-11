@@ -1,5 +1,5 @@
 import React from 'react';
-import { ResponsiveContainer, ScatterChart, XAxis, YAxis, CartesianGrid, Scatter, Cell, Line, LineChart } from 'recharts';
+import { ResponsiveContainer, ScatterChart, XAxis, YAxis, CartesianGrid, Scatter, Cell, Line, LineChart, Text, ReferenceLine } from 'recharts';
 
 interface ChromaticityDiagramProps {
   chromaticity?: {
@@ -492,16 +492,97 @@ const PURPLE_LINE = [
 
 // Standard illuminant coordinates
 const ILLUMINANTS = {
-  A: { x: 0.44757, y: 0.40745 },
-  C: { x: 0.31006, y: 0.31616 },
-  D50: { x: 0.34567, y: 0.35850 },
-  D55: { x: 0.33242, y: 0.34743 },
-  D65: { x: 0.31271, y: 0.32902 },
-  D75: { x: 0.29902, y: 0.31485 },
-  F2: { x: 0.37208, y: 0.37529 },
-  F7: { x: 0.31292, y: 0.32933 },
-  F11: { x: 0.38052, y: 0.37713 }
+  A: { x: 0.44757, y: 0.40745, name: "A (2856K)" },
+  C: { x: 0.31006, y: 0.31616, name: "C (6774K)" },
+  D50: { x: 0.34567, y: 0.35850, name: "D50 (5003K)" },
+  D55: { x: 0.33242, y: 0.34743, name: "D55 (5503K)" },
+  D65: { x: 0.31271, y: 0.32902, name: "D65 (6504K)" },
+  D75: { x: 0.29902, y: 0.31485, name: "D75 (7504K)" },
+  F2: { x: 0.37208, y: 0.37529, name: "F2 (4230K)" },
+  F7: { x: 0.31292, y: 0.32933, name: "F7 (6500K)" },
+  F11: { x: 0.38052, y: 0.37713, name: "F11 (4000K)" }
 };
+
+// Wavelength labels for key points
+const WAVELENGTH_LABELS = [
+  { wavelength: 380, x: 0.17411, y: 0.00496 },
+  { wavelength: 400, x: 0.17334, y: 0.00480 },
+  { wavelength: 450, x: 0.15664, y: 0.01771 },
+  { wavelength: 500, x: 0.00817, y: 0.53842 },
+  { wavelength: 520, x: 0.07430, y: 0.83380 },
+  { wavelength: 550, x: 0.30160, y: 0.69231 },
+  { wavelength: 580, x: 0.51249, y: 0.48659 },
+  { wavelength: 600, x: 0.62704, y: 0.37249 },
+  { wavelength: 650, x: 0.72599, y: 0.27401 },
+  { wavelength: 700, x: 0.73469, y: 0.26531 }
+];
+
+// Generate gamut background points in a triangular grid pattern
+function generateGamutBackground(): { x: number, y: number, color: string }[] {
+  const points = [];
+  const step = 0.02;
+  
+  for (let x = 0; x <= 0.8; x += step) {
+    for (let y = 0; y <= 0.9; y += step) {
+      // Check if point is inside the horseshoe gamut
+      const isInside = isPointInGamut(x, y);
+      if (isInside) {
+        const color = xyToRGB(x, y);
+        points.push({ x, y, color });
+      }
+    }
+  }
+  return points;
+}
+
+function isPointInGamut(x: number, y: number): boolean {
+  // Simple check: point must be above purple line and inside spectral locus
+  // Purple line: y = -0.24018 * x + 0.04607 (approximate)
+  if (y < -0.24018 * x + 0.04607) return false;
+  
+  // Check if inside spectral locus (simplified polygon check)
+  let inside = false;
+  for (let i = 0, j = SPECTRAL_LOCUS_2DEG.length - 1; i < SPECTRAL_LOCUS_2DEG.length; j = i++) {
+    const xi = SPECTRAL_LOCUS_2DEG[i].x;
+    const yi = SPECTRAL_LOCUS_2DEG[i].y;
+    const xj = SPECTRAL_LOCUS_2DEG[j].x;
+    const yj = SPECTRAL_LOCUS_2DEG[j].y;
+    
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function xyToRGB(x: number, y: number): string {
+  // Convert xy to XYZ (assuming Y=1 for maximum brightness)
+  const Y = 1;
+  const X = (Y / y) * x;
+  const Z = (Y / y) * (1 - x - y);
+  
+  // XYZ to sRGB matrix transformation
+  let r = 3.2406 * X - 1.5372 * Y - 0.4986 * Z;
+  let g = -0.9689 * X + 1.8758 * Y + 0.0415 * Z;
+  let b = 0.0557 * X - 0.2040 * Y + 1.0570 * Z;
+  
+  // Normalize to 0-1 range and apply gamma correction
+  r = Math.max(0, Math.min(1, r));
+  g = Math.max(0, Math.min(1, g));
+  b = Math.max(0, Math.min(1, b));
+  
+  // Gamma correction
+  r = r <= 0.0031308 ? 12.92 * r : 1.055 * Math.pow(r, 1/2.4) - 0.055;
+  g = g <= 0.0031308 ? 12.92 * g : 1.055 * Math.pow(g, 1/2.4) - 0.055;
+  b = b <= 0.0031308 ? 12.92 * b : 1.055 * Math.pow(b, 1/2.4) - 0.055;
+  
+  // Convert to 255 scale and ensure valid range
+  r = Math.max(0, Math.min(255, Math.round(r * 255)));
+  g = Math.max(0, Math.min(255, Math.round(g * 255)));
+  b = Math.max(0, Math.min(255, Math.round(b * 255)));
+  
+  return `rgb(${r},${g},${b})`;
+}
 
 const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({ 
   chromaticity, 
@@ -525,93 +606,156 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
   }] : [];
 
   // Illuminant points
-  const illuminantPoints = Object.entries(ILLUMINANTS).map(([name, coords]) => ({
-    x: coords.x,
-    y: coords.y,
-    name,
+  const illuminantPoints = Object.entries(ILLUMINANTS).map(([key, data]) => ({
+    x: data.x,
+    y: data.y,
+    name: key,
+    fullName: data.name,
     type: 'illuminant'
   }));
 
+  // Generate gamut background
+  const gamutBackground = generateGamutBackground();
+
   return (
-    <div className="w-full h-96 bg-card rounded-lg border p-4">
+    <div className="w-full bg-card rounded-lg border p-4">
       <h3 className="text-lg font-semibold mb-4 text-center">
         CIE 1931 Chromaticity Diagram ({observer}° Observer)
       </h3>
-      <ResponsiveContainer width="100%" height="100%">
-        <ScatterChart
-          margin={{ top: 20, right: 30, bottom: 40, left: 40 }}
-          data={boundaryData}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
-          <XAxis 
-            type="number"
-            dataKey="x"
-            domain={[0, 0.8]}
-            tick={{ fontSize: 12 }}
-            label={{ value: 'x', position: 'insideBottom', offset: -10 }}
-          />
-          <YAxis 
-            type="number"
-            dataKey="y"
-            domain={[0, 0.9]}
-            tick={{ fontSize: 12 }}
-            label={{ value: 'y', angle: -90, position: 'insideLeft' }}
-          />
-          
-          {/* Spectral locus boundary */}
-          <Scatter 
-            data={spectralLocusData} 
-            fill="hsl(var(--primary))"
-            line={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
-            shape="circle"
-            r={0}
-          />
-          
-          {/* Purple line */}
-          <Scatter 
-            data={PURPLE_LINE} 
-            fill="transparent"
-            line={{ stroke: 'hsl(var(--primary))', strokeWidth: 2, strokeDasharray: '5,5' }}
-            shape="circle"
-            r={0}
-          />
-          
-          {/* Illuminant points */}
-          <Scatter data={illuminantPoints}>
-            {illuminantPoints.map((entry, index) => (
-              <Cell key={`illuminant-${index}`} fill="hsl(var(--muted-foreground))" r={3} />
+      <div className="relative h-[500px]">
+        {/* Background gamut colors */}
+        <div className="absolute inset-0 rounded overflow-hidden">
+          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {gamutBackground.map((point, i) => (
+              <rect 
+                key={i}
+                x={point.x * 125} 
+                y={100 - point.y * 111} 
+                width="2.5" 
+                height="2.2"
+                fill={point.color}
+                opacity="0.6"
+              />
             ))}
-          </Scatter>
-          
-          {/* Current color point */}
-          {colorPoint.length > 0 && (
-            <Scatter data={colorPoint}>
-              <Cell fill="hsl(var(--destructive))" r={6} stroke="white" strokeWidth={2} />
+          </svg>
+        </div>
+        
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart
+            margin={{ top: 20, right: 30, bottom: 60, left: 60 }}
+            data={boundaryData}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+            <XAxis 
+              type="number"
+              dataKey="x"
+              domain={[0, 0.8]}
+              tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
+              label={{ value: 'x', position: 'insideBottom', offset: -15, style: { textAnchor: 'middle', fontSize: 14 } }}
+            />
+            <YAxis 
+              type="number"
+              dataKey="y"
+              domain={[0, 0.9]}
+              tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
+              label={{ value: 'y', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 14 } }}
+            />
+            
+            {/* Spectral locus boundary */}
+            <Scatter 
+              data={spectralLocusData} 
+              fill="none"
+              line={{ stroke: 'hsl(var(--foreground))', strokeWidth: 3 }}
+              shape="circle"
+              r={0}
+            />
+            
+            {/* Purple line */}
+            <Scatter 
+              data={PURPLE_LINE} 
+              fill="transparent"
+              line={{ stroke: 'hsl(var(--foreground))', strokeWidth: 3, strokeDasharray: '8,4' }}
+              shape="circle"
+              r={0}
+            />
+            
+            {/* Wavelength labels */}
+            {WAVELENGTH_LABELS.map((label, i) => (
+              <text 
+                key={`wl-${i}`}
+                x={label.x * 800 + 60} 
+                y={500 - label.y * 444 + 20}
+                fontSize="12"
+                fontWeight="bold"
+                fill="hsl(var(--foreground))"
+                textAnchor="middle"
+                stroke="hsl(var(--background))"
+                strokeWidth="3"
+                paintOrder="stroke"
+              >
+                {label.wavelength}nm
+              </text>
+            ))}
+            
+            {/* Illuminant points */}
+            <Scatter data={illuminantPoints}>
+              {illuminantPoints.map((entry, index) => (
+                <Cell key={`illuminant-${index}`} fill="white" r={4} stroke="hsl(var(--foreground))" strokeWidth={2} />
+              ))}
             </Scatter>
-          )}
-        </ScatterChart>
-      </ResponsiveContainer>
+            
+            {/* Illuminant labels */}
+            {illuminantPoints.map((point, i) => (
+              <text 
+                key={`ill-${i}`}
+                x={point.x * 800 + 60} 
+                y={500 - point.y * 444 + 20 - 12}
+                fontSize="11"
+                fontWeight="bold"
+                fill="hsl(var(--foreground))"
+                textAnchor="middle"
+                stroke="hsl(var(--background))"
+                strokeWidth="2"
+                paintOrder="stroke"
+              >
+                {point.name}
+              </text>
+            ))}
+            
+            {/* Current color point */}
+            {colorPoint.length > 0 && (
+              <Scatter data={colorPoint}>
+                <Cell fill="hsl(var(--destructive))" r={8} stroke="white" strokeWidth={3} />
+              </Scatter>
+            )}
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
       
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-0.5 bg-primary"></div>
+          <div className="w-4 h-0.5 bg-foreground"></div>
           <span>Spectral Locus</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-0.5 border-t-2 border-dashed border-primary"></div>
+          <div className="w-4 h-0.5 border-t-2 border-dashed border-foreground"></div>
           <span>Purple Line</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-muted-foreground"></div>
-          <span>Illuminants</span>
+          <div className="w-3 h-3 rounded-full bg-white border-2 border-foreground"></div>
+          <span>Standard Illuminants</span>
         </div>
         {chromaticity && (
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-destructive border border-white"></div>
-            <span>Current Color ({chromaticity.x.toFixed(4)}, {chromaticity.y.toFixed(4)})</span>
+            <div className="w-4 h-4 rounded-full bg-destructive border-2 border-white"></div>
+            <span>Current Color (x={chromaticity.x.toFixed(4)}, y={chromaticity.y.toFixed(4)})</span>
           </div>
         )}
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded"></div>
+          <span>Visible Color Gamut</span>
+        </div>
       </div>
     </div>
   );
