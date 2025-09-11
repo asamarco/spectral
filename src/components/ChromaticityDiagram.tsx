@@ -517,69 +517,47 @@ const WAVELENGTH_LABELS = [
   { wavelength: 700, x: 0.73469, y: 0.26531 }
 ];
 
-// Generate gamut background points in a triangular grid pattern
-function generateGamutBackground(): { x: number, y: number, color: string }[] {
-  const points = [];
-  const step = 0.02;
+// Function to convert wavelength to approximate RGB color for parametric display
+function wavelengthToRGB(wavelength: number): string {
+  let r = 0, g = 0, b = 0;
   
-  for (let x = 0; x <= 0.8; x += step) {
-    for (let y = 0; y <= 0.9; y += step) {
-      // Check if point is inside the horseshoe gamut
-      const isInside = isPointInGamut(x, y);
-      if (isInside) {
-        const color = xyToRGB(x, y);
-        points.push({ x, y, color });
-      }
-    }
+  if (wavelength >= 380 && wavelength <= 440) {
+    r = -(wavelength - 440) / (440 - 380);
+    g = 0.0;
+    b = 1.0;
+  } else if (wavelength >= 440 && wavelength <= 490) {
+    r = 0.0;
+    g = (wavelength - 440) / (490 - 440);
+    b = 1.0;
+  } else if (wavelength >= 490 && wavelength <= 510) {
+    r = 0.0;
+    g = 1.0;
+    b = -(wavelength - 510) / (510 - 490);
+  } else if (wavelength >= 510 && wavelength <= 580) {
+    r = (wavelength - 510) / (580 - 510);
+    g = 1.0;
+    b = 0.0;
+  } else if (wavelength >= 580 && wavelength <= 645) {
+    r = 1.0;
+    g = -(wavelength - 645) / (645 - 580);
+    b = 0.0;
+  } else if (wavelength >= 645 && wavelength <= 750) {
+    r = 1.0;
+    g = 0.0;
+    b = 0.0;
   }
-  return points;
-}
-
-function isPointInGamut(x: number, y: number): boolean {
-  // Simple check: point must be above purple line and inside spectral locus
-  // Purple line: y = -0.24018 * x + 0.04607 (approximate)
-  if (y < -0.24018 * x + 0.04607) return false;
   
-  // Check if inside spectral locus (simplified polygon check)
-  let inside = false;
-  for (let i = 0, j = SPECTRAL_LOCUS_2DEG.length - 1; i < SPECTRAL_LOCUS_2DEG.length; j = i++) {
-    const xi = SPECTRAL_LOCUS_2DEG[i].x;
-    const yi = SPECTRAL_LOCUS_2DEG[i].y;
-    const xj = SPECTRAL_LOCUS_2DEG[j].x;
-    const yj = SPECTRAL_LOCUS_2DEG[j].y;
-    
-    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-      inside = !inside;
-    }
+  // Intensity correction near the vision limits
+  let factor = 1.0;
+  if (wavelength >= 380 && wavelength <= 420) {
+    factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+  } else if (wavelength >= 700 && wavelength <= 750) {
+    factor = 0.3 + 0.7 * (750 - wavelength) / (750 - 700);
   }
-  return inside;
-}
-
-function xyToRGB(x: number, y: number): string {
-  // Convert xy to XYZ (assuming Y=1 for maximum brightness)
-  const Y = 1;
-  const X = (Y / y) * x;
-  const Z = (Y / y) * (1 - x - y);
   
-  // XYZ to sRGB matrix transformation
-  let r = 3.2406 * X - 1.5372 * Y - 0.4986 * Z;
-  let g = -0.9689 * X + 1.8758 * Y + 0.0415 * Z;
-  let b = 0.0557 * X - 0.2040 * Y + 1.0570 * Z;
-  
-  // Normalize to 0-1 range and apply gamma correction
-  r = Math.max(0, Math.min(1, r));
-  g = Math.max(0, Math.min(1, g));
-  b = Math.max(0, Math.min(1, b));
-  
-  // Gamma correction
-  r = r <= 0.0031308 ? 12.92 * r : 1.055 * Math.pow(r, 1/2.4) - 0.055;
-  g = g <= 0.0031308 ? 12.92 * g : 1.055 * Math.pow(g, 1/2.4) - 0.055;
-  b = b <= 0.0031308 ? 12.92 * b : 1.055 * Math.pow(b, 1/2.4) - 0.055;
-  
-  // Convert to 255 scale and ensure valid range
-  r = Math.max(0, Math.min(255, Math.round(r * 255)));
-  g = Math.max(0, Math.min(255, Math.round(g * 255)));
-  b = Math.max(0, Math.min(255, Math.round(b * 255)));
+  r = Math.round(255 * r * factor);
+  g = Math.round(255 * g * factor);
+  b = Math.round(255 * b * factor);
   
   return `rgb(${r},${g},${b})`;
 }
@@ -594,9 +572,6 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
     y: point.y,
     wavelength: point.wavelength
   }));
-
-  // Add the purple line closure
-  const boundaryData = [...spectralLocusData, ...PURPLE_LINE];
 
   // Current color point
   const colorPoint = chromaticity ? [{ 
@@ -614,36 +589,41 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
     type: 'illuminant'
   }));
 
-  // Generate gamut background
-  const gamutBackground = generateGamutBackground();
-
   return (
     <div className="w-full bg-card rounded-lg border p-4">
       <h3 className="text-lg font-semibold mb-4 text-center">
         CIE 1931 Chromaticity Diagram ({observer}° Observer)
       </h3>
-      <div className="relative h-[500px]">
-        {/* Background gamut colors */}
-        <div className="absolute inset-0 rounded overflow-hidden">
-          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {gamutBackground.map((point, i) => (
-              <rect 
-                key={i}
-                x={point.x * 125} 
-                y={100 - point.y * 111} 
-                width="2.5" 
-                height="2.2"
-                fill={point.color}
-                opacity="0.6"
-              />
-            ))}
-          </svg>
+      
+      {/* Parametric Color Bar */}
+      <div className="mb-4">
+        <div className="text-sm font-medium mb-2">Spectral Colors (380-700nm)</div>
+        <div className="h-6 rounded flex overflow-hidden border border-border">
+          {Array.from({ length: 33 }, (_, i) => {
+            const wavelength = 380 + i * 10;
+            return (
+              <div
+                key={wavelength}
+                className="flex-1 relative group cursor-pointer"
+                style={{ backgroundColor: wavelengthToRGB(wavelength) }}
+                title={`${wavelength}nm`}
+              >
+                {wavelength % 50 === 0 && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 text-xs text-foreground/70 mb-1">
+                    {wavelength}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-        
+      </div>
+
+      <div className="h-[500px]">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart
             margin={{ top: 20, right: 30, bottom: 60, left: 60 }}
-            data={boundaryData}
+            data={spectralLocusData}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
             <XAxis 
@@ -651,21 +631,21 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
               dataKey="x"
               domain={[0, 0.8]}
               tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'x', position: 'insideBottom', offset: -15, style: { textAnchor: 'middle', fontSize: 14 } }}
+              label={{ value: 'CIE x', position: 'insideBottom', offset: -15, style: { textAnchor: 'middle', fontSize: 14, fontWeight: 'bold' } }}
             />
             <YAxis 
               type="number"
               dataKey="y"
               domain={[0, 0.9]}
               tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'y', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 14 } }}
+              label={{ value: 'CIE y', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 14, fontWeight: 'bold' } }}
             />
             
             {/* Spectral locus boundary */}
             <Scatter 
               data={spectralLocusData} 
               fill="none"
-              line={{ stroke: 'hsl(var(--foreground))', strokeWidth: 3 }}
+              line={{ stroke: 'hsl(var(--primary))', strokeWidth: 3 }}
               shape="circle"
               r={0}
             />
@@ -674,33 +654,42 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
             <Scatter 
               data={PURPLE_LINE} 
               fill="transparent"
-              line={{ stroke: 'hsl(var(--foreground))', strokeWidth: 3, strokeDasharray: '8,4' }}
+              line={{ stroke: 'hsl(var(--primary))', strokeWidth: 3, strokeDasharray: '8,4' }}
               shape="circle"
               r={0}
             />
             
-            {/* Wavelength labels */}
+            {/* Wavelength points and labels */}
             {WAVELENGTH_LABELS.map((label, i) => (
-              <text 
-                key={`wl-${i}`}
-                x={label.x * 800 + 60} 
-                y={500 - label.y * 444 + 20}
-                fontSize="12"
-                fontWeight="bold"
-                fill="hsl(var(--foreground))"
-                textAnchor="middle"
-                stroke="hsl(var(--background))"
-                strokeWidth="3"
-                paintOrder="stroke"
-              >
-                {label.wavelength}nm
-              </text>
+              <g key={`wl-group-${i}`}>
+                <circle
+                  cx={label.x * 800 + 60}
+                  cy={500 - label.y * 444 + 20}
+                  r="3"
+                  fill="hsl(var(--primary))"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+                <text 
+                  x={label.x * 800 + 60} 
+                  y={500 - label.y * 444 + 20 - 10}
+                  fontSize="11"
+                  fontWeight="bold"
+                  fill="hsl(var(--foreground))"
+                  textAnchor="middle"
+                  stroke="hsl(var(--background))"
+                  strokeWidth="2"
+                  paintOrder="stroke"
+                >
+                  {label.wavelength}
+                </text>
+              </g>
             ))}
             
             {/* Illuminant points */}
             <Scatter data={illuminantPoints}>
               {illuminantPoints.map((entry, index) => (
-                <Cell key={`illuminant-${index}`} fill="white" r={4} stroke="hsl(var(--foreground))" strokeWidth={2} />
+                <Cell key={`illuminant-${index}`} fill="hsl(var(--secondary))" r={5} stroke="white" strokeWidth={2} />
               ))}
             </Scatter>
             
@@ -709,16 +698,16 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
               <text 
                 key={`ill-${i}`}
                 x={point.x * 800 + 60} 
-                y={500 - point.y * 444 + 20 - 12}
-                fontSize="11"
+                y={500 - point.y * 444 + 20 - 15}
+                fontSize="10"
                 fontWeight="bold"
-                fill="hsl(var(--foreground))"
+                fill="hsl(var(--secondary-foreground))"
                 textAnchor="middle"
                 stroke="hsl(var(--background))"
                 strokeWidth="2"
                 paintOrder="stroke"
               >
-                {point.name}
+                {point.fullName}
               </text>
             ))}
             
@@ -735,15 +724,19 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-0.5 bg-foreground"></div>
+          <div className="w-4 h-0.5 bg-primary"></div>
           <span>Spectral Locus</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-0.5 border-t-2 border-dashed border-foreground"></div>
+          <div className="w-4 h-0.5 border-t-2 border-dashed border-primary"></div>
           <span>Purple Line</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-white border-2 border-foreground"></div>
+          <div className="w-3 h-3 rounded-full bg-primary border-2 border-white"></div>
+          <span>Wavelength Markers</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-secondary border-2 border-white"></div>
           <span>Standard Illuminants</span>
         </div>
         {chromaticity && (
@@ -752,10 +745,6 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
             <span>Current Color (x={chromaticity.x.toFixed(4)}, y={chromaticity.y.toFixed(4)})</span>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded"></div>
-          <span>Visible Color Gamut</span>
-        </div>
       </div>
     </div>
   );
