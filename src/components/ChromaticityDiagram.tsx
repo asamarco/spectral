@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ResponsiveContainer, ScatterChart, XAxis, YAxis, CartesianGrid, Scatter, Cell, Line, LineChart } from 'recharts';
 
 interface ChromaticityDiagramProps {
@@ -503,95 +503,10 @@ const ILLUMINANTS = {
   F11: { x: 0.38052, y: 0.37713 }
 };
 
-// Function to convert CIE xy chromaticity coordinates to sRGB
-const xyToRGB = (x: number, y: number, Y: number = 1): [number, number, number] => {
-  // Convert xy to XYZ
-  const z = 1 - x - y;
-  const X = (Y / y) * x;
-  const Z = (Y / y) * z;
-  
-  // XYZ to sRGB matrix (D65 illuminant)
-  let r = X * 3.2406 + Y * -1.5372 + Z * -0.4986;
-  let g = X * -0.9689 + Y * 1.8758 + Z * 0.0415;
-  let b = X * 0.0557 + Y * -0.2040 + Z * 1.0570;
-  
-  // Apply gamma correction
-  const gammaCorrect = (c: number) => {
-    if (c <= 0.0031308) {
-      return 12.92 * c;
-    } else {
-      return 1.055 * Math.pow(c, 1.0 / 2.4) - 0.055;
-    }
-  };
-  
-  r = gammaCorrect(r);
-  g = gammaCorrect(g);
-  b = gammaCorrect(b);
-  
-  // Clamp to [0, 1] and convert to [0, 255]
-  r = Math.max(0, Math.min(1, r)) * 255;
-  g = Math.max(0, Math.min(1, g)) * 255;
-  b = Math.max(0, Math.min(1, b)) * 255;
-  
-  return [Math.round(r), Math.round(g), Math.round(b)];
-};
-
-// Function to check if a point is inside the gamut (spectral locus + purple line)
-const isInsideGamut = (x: number, y: number): boolean => {
-  // Simple approach: check if point is inside the triangle formed by the gamut boundary
-  // For more accurate results, we'd need to implement point-in-polygon algorithm
-  
-  // Basic bounds check
-  if (x < 0 || y < 0 || x + y > 1) return false;
-  
-  // Check against some key boundary points
-  const vertices = [
-    [0.17556, 0.00529], // 360nm (violet)
-    [0.00817, 0.53842], // ~500nm (cyan)
-    [0.73469, 0.26531], // 700nm (red)
-  ];
-  
-  // Simple triangle test for basic gamut
-  const [x1, y1] = vertices[0];
-  const [x2, y2] = vertices[1];
-  const [x3, y3] = vertices[2];
-  
-  const denom = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
-  const a = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / denom;
-  const b = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / denom;
-  const c = 1 - a - b;
-  
-  return a >= 0 && b >= 0 && c >= 0;
-};
-
 const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({ 
   chromaticity, 
   observer = '2' 
 }) => {
-  // Generate color background grid
-  const colorGrid = useMemo(() => {
-    const gridSize = 50; // 50x50 grid for performance
-    const colors: string[][] = [];
-    
-    for (let i = 0; i < gridSize; i++) {
-      const row: string[] = [];
-      for (let j = 0; j < gridSize; j++) {
-        const x = (j / (gridSize - 1)) * 0.8; // Scale to x domain [0, 0.8]
-        const y = (1 - i / (gridSize - 1)) * 0.9; // Scale to y domain [0, 0.9], inverted
-        
-        if (isInsideGamut(x, y)) {
-          const [r, g, b] = xyToRGB(x, y, 0.5); // Use Y=0.5 for consistent brightness
-          row.push(`rgb(${r}, ${g}, ${b})`);
-        } else {
-          row.push('transparent');
-        }
-      }
-      colors.push(row);
-    }
-    
-    return colors;
-  }, []);
-
   // Create the spectral locus data for plotting
   const spectralLocusData = SPECTRAL_LOCUS_2DEG.map(point => ({
     x: point.x,
@@ -609,11 +524,10 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
     type: 'color' 
   }] : [];
 
-  // Illuminant points - only show selected ones
-  const selectedIlluminants = ['D65', 'A', 'C', 'F2', 'F11'];
-  const illuminantPoints = selectedIlluminants.map(name => ({
-    x: ILLUMINANTS[name as keyof typeof ILLUMINANTS].x,
-    y: ILLUMINANTS[name as keyof typeof ILLUMINANTS].y,
+  // Illuminant points
+  const illuminantPoints = Object.entries(ILLUMINANTS).map(([name, coords]) => ({
+    x: coords.x,
+    y: coords.y,
     name,
     type: 'illuminant'
   }));
@@ -623,138 +537,60 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
       <h3 className="text-lg font-semibold mb-4 text-center">
         CIE 1931 Chromaticity Diagram ({observer}° Observer)
       </h3>
-      <div className="relative w-full h-full">
-        {/* Color background grid */}
-        <canvas
-          ref={(canvas) => {
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-            
-            canvas.width = 400;
-            canvas.height = 350;
-            
-            const gridSize = 50;
-            const cellWidth = canvas.width / gridSize;
-            const cellHeight = canvas.height / gridSize;
-            
-            for (let i = 0; i < gridSize; i++) {
-              for (let j = 0; j < gridSize; j++) {
-                const x = (j / (gridSize - 1)) * 0.8;
-                const y = (1 - i / (gridSize - 1)) * 0.9;
-                
-                if (isInsideGamut(x, y)) {
-                  const [r, g, b] = xyToRGB(x, y, 0.7);
-                  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                  ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
-                }
-              }
-            }
-          }}
-          className="absolute inset-0 opacity-70 rounded"
-          style={{ 
-            width: '100%', 
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: 1
-          }}
-        />
-        
-        <ResponsiveContainer width="100%" height="100%" style={{ zIndex: 2, position: 'relative' }}>
-          <ScatterChart
-            margin={{ top: 20, right: 30, bottom: 40, left: 40 }}
-            data={boundaryData}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-            <XAxis 
-              type="number"
-              dataKey="x"
-              domain={[0, 0.8]}
-              tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'x', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle', fill: 'hsl(var(--foreground))' } }}
-            />
-            <YAxis 
-              type="number"
-              dataKey="y"
-              domain={[0, 0.9]}
-              tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
-              label={{ value: 'y', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: 'hsl(var(--foreground))' } }}
-            />
-            
-            {/* Spectral locus boundary */}
-            <Scatter 
-              data={spectralLocusData} 
-              fill="black"
-              line={{ stroke: 'black', strokeWidth: 3 }}
-              shape="circle"
-              r={0}
-            />
-            
-            {/* Purple line */}
-            <Scatter 
-              data={PURPLE_LINE} 
-              fill="transparent"
-              line={{ stroke: 'black', strokeWidth: 3, strokeDasharray: '8,4' }}
-              shape="circle"
-              r={0}
-            />
-            
-            {/* Illuminant points */}
-            <Scatter data={illuminantPoints}>
-              {illuminantPoints.map((entry, index) => (
-                <Cell key={`illuminant-${index}`} fill="white" r={4} stroke="black" strokeWidth={2} />
-              ))}
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart
+          margin={{ top: 20, right: 30, bottom: 40, left: 40 }}
+          data={boundaryData}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
+          <XAxis 
+            type="number"
+            dataKey="x"
+            domain={[0, 0.8]}
+            tick={{ fontSize: 12 }}
+            label={{ value: 'x', position: 'insideBottom', offset: -10 }}
+          />
+          <YAxis 
+            type="number"
+            dataKey="y"
+            domain={[0, 0.9]}
+            tick={{ fontSize: 12 }}
+            label={{ value: 'y', angle: -90, position: 'insideLeft' }}
+          />
+          
+          {/* Spectral locus boundary */}
+          <Scatter 
+            data={spectralLocusData} 
+            fill="hsl(var(--primary))"
+            line={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+            shape="circle"
+            r={0}
+          />
+          
+          {/* Purple line */}
+          <Scatter 
+            data={PURPLE_LINE} 
+            fill="transparent"
+            line={{ stroke: 'hsl(var(--primary))', strokeWidth: 2, strokeDasharray: '5,5' }}
+            shape="circle"
+            r={0}
+          />
+          
+          {/* Illuminant points */}
+          <Scatter data={illuminantPoints}>
+            {illuminantPoints.map((entry, index) => (
+              <Cell key={`illuminant-${index}`} fill="hsl(var(--muted-foreground))" r={3} />
+            ))}
+          </Scatter>
+          
+          {/* Current color point */}
+          {colorPoint.length > 0 && (
+            <Scatter data={colorPoint}>
+              <Cell fill="hsl(var(--destructive))" r={6} stroke="white" strokeWidth={2} />
             </Scatter>
-            
-            {/* Current color point */}
-            {colorPoint.length > 0 && (
-              <Scatter data={colorPoint}>
-                <Cell fill="hsl(var(--destructive))" r={6} stroke="white" strokeWidth={2} />
-              </Scatter>
-            )}
-          </ScatterChart>
-        </ResponsiveContainer>
-        
-        {/* Wavelength labels positioned absolutely */}
-        {[400, 450, 500, 550, 600, 650, 700].map(wavelength => {
-          const point = SPECTRAL_LOCUS_2DEG.find(p => p.wavelength === wavelength);
-          if (!point) return null;
-          
-          const leftPercent = ((point.x / 0.8) * 0.8 + 0.1) * 100; // Adjust for chart margins
-          const topPercent = ((1 - point.y / 0.9) * 0.8 + 0.05) * 100; // Adjust for chart margins
-          
-          return (
-            <div
-              key={wavelength}
-              className="absolute text-xs font-bold text-black bg-white/80 px-1 rounded pointer-events-none"
-              style={{
-                left: `${leftPercent}%`,
-                top: `${topPercent}%`,
-                transform: 'translate(-50%, -100%)',
-                zIndex: 3
-              }}
-            >
-              {wavelength}nm
-            </div>
-          );
-        })}
-        
-        {/* Illuminant labels positioned absolutely */}
-        {illuminantPoints.map((point, index) => (
-          <div
-            key={`label-${index}`}
-            className="absolute text-xs font-bold text-black bg-white/80 px-1 rounded pointer-events-none"
-            style={{
-              left: `${((point.x / 0.8) * 0.8 + 0.1) * 100}%`,
-              top: `${((1 - point.y / 0.9) * 0.8 + 0.05) * 100}%`,
-              transform: 'translate(-50%, 150%)',
-              zIndex: 3
-            }}
-          >
-            {point.name}
-          </div>
-        ))}
-      </div>
+          )}
+        </ScatterChart>
+      </ResponsiveContainer>
       
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-sm">
