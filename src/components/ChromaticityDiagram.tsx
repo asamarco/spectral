@@ -31,22 +31,32 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calculate scaled coordinates based on container size
+  // Calculate scaled coordinates based on container size and background-size: contain
   const getScaledCoordinates = (cieX: number, cieY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
-    
+
     const containerRect = containerRef.current.getBoundingClientRect();
-    const imageWidth = 729; // Original image width
-    const imageHeight = 519; // Original image height
-    
-    const scaleX = containerRect.width / imageWidth;
-    const scaleY = containerRect.height / imageHeight;
-    
+    const imageWidth = 729; // Original image intrinsic width
+    const imageHeight = 519; // Original image intrinsic height
+
+    // background-size: contain => uniform scale to fit within container
+    const scale = Math.min(
+      containerRect.width / imageWidth,
+      containerRect.height / imageHeight
+    );
+
+    const renderedWidth = imageWidth * scale;
+    const renderedHeight = imageHeight * scale;
+
+    // Centered background => compute offsets
+    const offsetLeft = (containerRect.width - renderedWidth) / 2;
+    const offsetTop = (containerRect.height - renderedHeight) / 2;
+
     const imageCoords = convertCIEToImage(cieX, cieY);
-    
+
     return {
-      x: imageCoords.x * scaleX,
-      y: imageCoords.y * scaleY
+      x: offsetLeft + imageCoords.x * scale,
+      y: offsetTop + imageCoords.y * scale
     };
   };
 
