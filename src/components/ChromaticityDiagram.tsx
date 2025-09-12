@@ -8,14 +8,8 @@ interface ChromaticityDiagramProps {
   observer?: '2' | '10';
 }
 
-// Standard illuminant coordinates - filtered to D65, A, C, F2, F11 only
-const ILLUMINANTS = {
-  A: { x: 0.44757, y: 0.40745 },
-  C: { x: 0.31006, y: 0.31616 },
-  D65: { x: 0.31271, y: 0.32902 },
-  F2: { x: 0.37208, y: 0.37529 },
-  F11: { x: 0.38052, y: 0.37713 }
-};
+// Test point at origin
+const ORIGIN_POINT = { x: 0, y: 0 };
 
 // Coordinate conversion from CIE xy to image pixels
 // (0,1) = (195,86); (0,0) = (195,419); (1,0) = (534,419)
@@ -75,25 +69,24 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
           backgroundPosition: 'center'
         }}
       >
-        {/* Illuminant points */}
-        {Object.entries(ILLUMINANTS).map(([name, coords]) => {
-          const position = getScaledCoordinates(coords.x, coords.y);
+        {/* Origin point */}
+        {(() => {
+          const position = getScaledCoordinates(ORIGIN_POINT.x, ORIGIN_POINT.y);
           return (
             <div
-              key={name}
               className="absolute w-3 h-3 bg-white border-2 border-black rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg"
               style={{
                 left: `${position.x}px`,
                 top: `${position.y}px`,
               }}
-              title={`${name}: (${coords.x.toFixed(4)}, ${coords.y.toFixed(4)})`}
+              title={`Origin: (${ORIGIN_POINT.x.toFixed(4)}, ${ORIGIN_POINT.y.toFixed(4)})`}
             >
               <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-foreground bg-background px-1 rounded shadow-sm">
-                {name}
+                (0,0)
               </div>
             </div>
           );
-        })}
+        })()}
         
         {/* Current color point */}
         {chromaticity && (
@@ -112,7 +105,7 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
       <div className="flex flex-wrap gap-4 mt-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-white border-2 border-black rounded-full"></div>
-          <span>Standard Illuminants</span>
+          <span>Origin Point (0,0)</span>
         </div>
         {chromaticity && (
           <div className="flex items-center gap-2">
