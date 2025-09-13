@@ -102,14 +102,14 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
           const colorClass = colors[index % colors.length];
           
           return (
-            <div key={`group-${point.group}`}>
+            <div key={`pt-${index}`}>
               <div
                 className={`absolute w-4 h-4 ${colorClass} border-2 border-white rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg`}
                 style={{
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                 }}
-                title={`Group ${point.group}: (${point.x.toFixed(4)}, ${point.y.toFixed(4)})`}
+                title={`${point.label ?? point.group}: (${point.x.toFixed(4)}, ${point.y.toFixed(4)})`}
               />
               <div
                 className="absolute text-xs font-semibold text-foreground bg-background/90 px-1 rounded shadow-sm pointer-events-none"
@@ -118,7 +118,7 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
                   top: `${position.y - 8}px`,
                 }}
               >
-                {point.label || `Group ${point.group}`}
+                {point.label ?? String(point.group)}
               </div>
             </div>
           );
@@ -136,9 +136,9 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
           const colorClass = colors[index % colors.length];
           
           return (
-            <div key={`legend-${point.group}`} className="flex items-center gap-2">
+            <div key={`legend-${index}`} className="flex items-center gap-2">
               <div className={`w-3 h-3 ${colorClass} border-2 border-white rounded-full`}></div>
-              <span>{point.label || `Group ${point.group}`} ({point.x.toFixed(4)}, {point.y.toFixed(4)})</span>
+              <span>{point.label ?? String(point.group)} ({point.x.toFixed(4)}, {point.y.toFixed(4)})</span>
             </div>
           );
         })}

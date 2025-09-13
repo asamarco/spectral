@@ -843,12 +843,12 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               
               {/* Chromaticity Diagram */}
               <ChromaticityDiagram 
-                chromaticity={groups.length > 0 ? groups.map(group => ({
-                  x: colorResults[group]?.chromaticity[0] || 0,
-                  y: colorResults[group]?.chromaticity[1] || 0,
-                  group: group,
-                  label: `Group ${group}`
-                })).filter(point => colorResults[point.group]) : null}
+                chromaticity={colorResults.length > 0 ? colorResults.map((res, idx) => ({
+                  x: res.chromaticity[0],
+                  y: res.chromaticity[1],
+                  group: groups[idx] ?? idx,
+                  label: `${groups[idx] ?? idx}`
+                })) : null}
                 observer={colorResults[currentGroup]?.observer}
               />
             </div>
