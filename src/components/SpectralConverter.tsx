@@ -792,6 +792,17 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                       {showNormalized ? 'Normalized Hex Color Code' : 'Hex Color Code'}
                     </div>
                   </div>
+                  
+                  {/* Chromaticity Diagram */}
+                  <ChromaticityDiagram 
+                    chromaticity={colorResults.length > 0 ? colorResults.map((res, idx) => ({
+                      x: res.chromaticity[0],
+                      y: res.chromaticity[1],
+                      group: groups[idx] ?? idx,
+                      label: `${groups[idx] ?? idx}`
+                    })) : null}
+                    observer={colorResults[currentGroup]?.observer}
+                  />
                 </div>
                 
                 {/* Color Values */}
@@ -840,17 +851,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   </div>
                 </div>
               </div>
-              
-              {/* Chromaticity Diagram */}
-              <ChromaticityDiagram 
-                chromaticity={colorResults.length > 0 ? colorResults.map((res, idx) => ({
-                  x: res.chromaticity[0],
-                  y: res.chromaticity[1],
-                  group: groups[idx] ?? idx,
-                  label: `${groups[idx] ?? idx}`
-                })) : null}
-                observer={colorResults[currentGroup]?.observer}
-              />
             </div>
           </CardContent>
         </Card>
