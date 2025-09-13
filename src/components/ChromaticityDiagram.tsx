@@ -13,9 +13,12 @@ const ORIGIN_POINT = { x: 0, y: 0 };
 
 // Coordinate conversion from CIE xy to image pixels
 // (0,1) = (195,86); (0,0) = (195,419); (1,0) = (534,419)
+// Adding offset (0.18, 0.02) to correct positioning
 const convertCIEToImage = (cieX: number, cieY: number) => {
-  const x = 195 + cieX * (534 - 195);
-  const y = 419 - cieY * (419 - 86);
+  const correctedX = cieX + 0.18;
+  const correctedY = cieY + 0.02;
+  const x = 195 + correctedX * (534 - 195);
+  const y = 419 - correctedY * (419 - 86);
   return { x, y };
 };
 
