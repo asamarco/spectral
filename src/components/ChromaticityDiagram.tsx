@@ -72,7 +72,7 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
                 <text
                   x={position.x + 8}
                   y={position.y - 4}
-                  fontSize="8"
+                  fontSize="10"
                   fontWeight="bold"
                   fill="black"
                 >
