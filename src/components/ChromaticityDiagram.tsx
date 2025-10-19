@@ -12,9 +12,6 @@ interface ChromaticityDiagramProps {
   observer?: '2' | '10';
 }
 
-// Test point at origin
-const ORIGIN_POINT = { x: 0, y: 0 };
-
 // Coordinate conversion from CIE xy to SVG coordinates
 // SVG canvas: x="47.8" y="32" width="409.6" height="460.8"
 // CIE coordinate range: x (0-0.8), y (0-0.9)
@@ -59,32 +56,6 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
             y="0"
           />
           
-          {/* Origin point */}
-          {(() => {
-            const position = convertCIEToSVG(ORIGIN_POINT.x, ORIGIN_POINT.y);
-            return (
-              <g>
-                <circle
-                  cx={position.x}
-                  cy={position.y}
-                  r="6"
-                  fill="white"
-                  stroke="black"
-                  strokeWidth="2"
-                />
-                <text
-                  x={position.x}
-                  y={position.y + 20}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fontWeight="bold"
-                  fill="black"
-                >
-                  (0,0)
-                </text>
-              </g>
-            );
-          })()}
           
           {/* Color points for all groups */}
           {chromaticity && chromaticity.map((point, index) => {
@@ -115,10 +86,6 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
       
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-white border-2 border-black rounded-full"></div>
-          <span>Origin Point (0,0)</span>
-        </div>
         {chromaticity && chromaticity.map((point, index) => {
           return (
             <div key={`legend-${index}`} className="flex items-center gap-2">

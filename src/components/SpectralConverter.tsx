@@ -793,16 +793,18 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                     </div>
                   </div>
                   
-                  {/* Chromaticity Diagram */}
-                  <ChromaticityDiagram 
-                    chromaticity={colorResults.length > 0 ? colorResults.map((res, idx) => ({
-                      x: res.chromaticity[0],
-                      y: res.chromaticity[1],
-                      group: groups[idx] ?? idx,
-                      label: `${groups[idx] ?? idx}`
-                    })) : null}
-                    observer={colorResults[currentGroup]?.observer}
-                  />
+                  {/* Chromaticity Diagram - Only for CIE 1931 (2°) */}
+                  {selectedObserver === '2' && (
+                    <ChromaticityDiagram 
+                      chromaticity={colorResults.length > 0 ? colorResults.map((res, idx) => ({
+                        x: res.chromaticity[0],
+                        y: res.chromaticity[1],
+                        group: groups[idx] ?? idx,
+                        label: `${groups[idx] ?? idx}`
+                      })) : null}
+                      observer={colorResults[currentGroup]?.observer}
+                    />
+                  )}
                 </div>
                 
                 {/* Color Values */}
