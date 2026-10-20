@@ -651,7 +651,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               <CardDescription>
                 {colorResults.length === 0 
                   ? 'Spectral data preview - convert to see colors'
-                  : groups.length > 1 
+                  : groups.length > 0 
                     ? `Visualizing ${groups.length} groups of spectral data with their corresponding colors`
                     : 'Visualizing spectral data with converted color'
                 }
@@ -682,7 +682,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                         borderRadius: '6px'
                       }}
                     />
-                    {groups.length > 1 ? (
+                    {groups.length > 0 ? (
                       groups.map((group, index) => {
                         const grayShades = ['hsl(218, 11%, 65%)', 'hsl(218, 11%, 55%)', 'hsl(218, 11%, 45%)', 'hsl(218, 11%, 35%)', 'hsl(218, 11%, 25%)'];
                         return (
@@ -708,7 +708,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                         name="Intensity"
                       />
                     )}
-                    {groups.length > 1 && <Legend />}
+                    {groups.length > 0 && <Legend />}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
