@@ -36,7 +36,7 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
   return (
     <div className="w-full bg-card rounded-lg border p-4">
       <h3 className="text-lg font-semibold mb-4 text-center">
-        CIE 1931 Chromaticity Diagram ({observer}° Observer)
+        CIE {observer === '10' ? '1964' : '1931'} Chromaticity Diagram ({observer}° Observer)
       </h3>
       
       <div className="w-full flex justify-center">
@@ -49,7 +49,7 @@ const ChromaticityDiagram: React.FC<ChromaticityDiagramProps> = ({
         >
           {/* Base SVG diagram */}
           <image
-            href="/CIExy1931.svg"
+            href={observer === '10' ? '/CIExy1964.svg' : '/CIExy1931.svg'}
             width="476"
             height="540"
             x="0"
