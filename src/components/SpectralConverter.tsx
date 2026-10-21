@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, Palette, BarChart3, Info, TrendingUp, ExternalLink } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
@@ -528,12 +529,63 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             Spectral Data Input
           </CardTitle>
           <CardDescription>
-            Enter wavelength and intensity pairs, or upload a data file. Each line should contain wavelength (nm) and intensity values.
+            Enter spectral data, upload a file, or use the example data.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <div className="relative">
+              <input
+                type="file"
+                accept=".txt,.dat,.csv"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <Button variant="outline" size="sm">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload File
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={useExample}>
+              Use Example Data
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href="https://www.kla.com/products/instruments/reflectance-calculator?wmin=380&wmax=780&wstep=5&angle=0&pol=mixed&units=nm&mat%5B%5D=Air&d%5B%5D=0&mat%5B%5D=Al2O3&d%5B%5D=100&mat%5B%5D=Si&d%5B%5D=0&sptype=r"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Simulate Spectrum (KLA)
+              </a>
+            </Button>
+          </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="spectral-data">Spectral Data (wavelength intensity pairs)</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="spectral-data">Spectral Data</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Data format information">
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 text-sm z-50">
+                  <p className="font-medium mb-2">Expected data format</p>
+                  <p className="mb-2"><strong>Two columns:</strong> wavelength (nm) and intensity, one pair per line.</p>
+                  <p className="mb-2"><strong>Three or more columns:</strong> first column is wavelength, last column is intensity. The second column can be an integer group number to separate measurements (e.g. different angles).</p>
+                  <p className="mb-2">Separators: spaces, tabs, or commas. Lines starting with <code>#</code> are treated as comments.</p>
+                  <div className="font-mono text-xs bg-muted p-2 rounded-md">
+                    380 0.05<br />
+                    400 0.08<br />
+                    <br />
+                    380 0 0.05<br />
+                    380 1 0.07
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <Textarea
               id="spectral-data"
               placeholder="380 0.05
@@ -595,49 +647,13 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             </div>
           </div>
           
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              onClick={handleConvert} 
-              disabled={isLoading}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Palette className="h-4 w-4 mr-2" />
-              {isLoading ? 'Converting...' : 'Convert to Color'}
-            </Button>
-            
-            <Button variant="outline" onClick={useExample}>
-              Use Example Data
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              asChild
-              className="bg-card/50 hover:bg-card/70"
-            >
-              <a 
-                href="https://www.kla.com/products/instruments/reflectance-calculator?wmin=380&wmax=780&wstep=5&angle=0&pol=mixed&units=nm&mat%5B%5D=Air&d%5B%5D=0&mat%5B%5D=Al2O3&d%5B%5D=100&mat%5B%5D=Si&d%5B%5D=0&sptype=r" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Simulate Spectrum (KLA)
-              </a>
-            </Button>
-            
-            <div className="relative">
-              <input
-                type="file"
-                accept=".txt,.dat,.csv"
-                onChange={handleFileUpload}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload File
-              </Button>
-            </div>
-          </div>
+          <Button
+            onClick={handleConvert}
+            disabled={isLoading}
+            className="w-full bg-primary hover:bg-primary/90"
+          >
+            {isLoading ? 'Converting...' : 'Convert to Color'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -895,26 +911,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             <li>Converts to sRGB color space with optional gamma correction</li>
             <li>Normalizes chromaticity coordinates</li>
           </ol>
-          <p>
-            <strong>Data Format:</strong> Each line should contain wavelength (in nm) and intensity values, 
-            separated by spaces, tabs, or commas. Lines starting with # are treated as comments.
-          </p>
-          <div className="bg-muted p-3 rounded-md font-mono text-sm">
-            <strong>Two columns:</strong><br/>
-            380 0.05<br/>
-            400 0.08<br/>
-            420 0.12<br/>
-            ...<br/><br/>
-            <strong>Three or more columns (grouped data):</strong><br/>
-            380 0 0.05<br/>
-            400 0 0.08<br/>
-            380 1 0.07<br/>
-            400 1 0.09<br/>
-            ...
-          </div>
-          <p className="text-sm text-muted-foreground">
-            For grouped data: wavelength, group_number, [other_columns...], intensity (last column)
-          </p>
         </CardContent>
       </Card>
     </div>
