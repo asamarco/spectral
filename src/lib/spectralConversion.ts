@@ -167,6 +167,8 @@ export interface ColorResult {
   rgb: [number, number, number];
   xyz: [number, number, number];
   chromaticity: [number, number];
+  lab: [number, number, number];  // CIE L*, a*, b* (relative to the selected illuminant white)
+  lch: [number, number, number];  // CIE L*, C*ab, h°ab (h in degrees, 0-360)
   hex: string;
   normalizedRgb: [number, number, number];
   normalizedHex: string;
@@ -203,14 +205,10 @@ function getIlluminantSPD(wavelength: number, illuminant: IlluminantType): numbe
   return interpolate(wavelength, CIE_CMF_DATA_2DEG.wavelengths, illuminantData.spd);
 }
 
-// Convert XYZ to sRGB (with illuminant-specific white point normalization)
-function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, observer: ObserverType = '2', applyGammaCorrection: boolean = true): [number, number, number] {
-  console.log('XYZ input values:', { X, Y, Z });
-  
-  // Calculate illuminant white point for normalization
+// Tristimulus values of the perfect white (reflectance = 1) for an illuminant/observer pair,
+// integrated at 1 nm exactly like the sample spectrum (units: SPD x CMF x nm)
+function getWhitePoint(illuminant: IlluminantType, observer: ObserverType): [number, number, number] {
   let whiteX = 0, whiteY = 0, whiteZ = 0;
-  
-  // Integrate illuminant SPD with CMF to get white point
   for (let λ = 380; λ <= 780; λ += 1) {
     const spd = getIlluminantSPD(λ, illuminant);
     const [cmfX, cmfY, cmfZ] = getCMF(λ, observer);
@@ -218,6 +216,35 @@ function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, o
     whiteY += spd * cmfY;
     whiteZ += spd * cmfZ;
   }
+  return [whiteX, whiteY, whiteZ];
+}
+
+// CIE 1976 L*a*b* and its cylindrical form L*C*h° from XYZ and the white point of the same
+// illuminant/observer (so L* = 100 for a perfect reflector, whichever illuminant is selected)
+function xyzToLabLch(
+  X: number, Y: number, Z: number,
+  white: [number, number, number]
+): { lab: [number, number, number]; lch: [number, number, number] } {
+  const delta = 6 / 29;
+  const f = (t: number) => (t > delta ** 3 ? Math.cbrt(t) : t / (3 * delta ** 2) + 4 / 29);
+  const fx = f(X / white[0]);
+  const fy = f(Y / white[1]);
+  const fz = f(Z / white[2]);
+  const L = 116 * fy - 16;
+  const a = 500 * (fx - fy);
+  const b = 200 * (fy - fz);
+  const C = Math.hypot(a, b);
+  let h = (Math.atan2(b, a) * 180) / Math.PI;
+  if (h < 0) h += 360;
+  return { lab: [L, a, b], lch: [L, C, h] };
+}
+
+// Convert XYZ to sRGB (with illuminant-specific white point normalization)
+function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, observer: ObserverType = '2', applyGammaCorrection: boolean = true): [number, number, number] {
+  console.log('XYZ input values:', { X, Y, Z });
+  
+  // Illuminant white point for normalization
+  const [whiteX, whiteY, whiteZ] = getWhitePoint(illuminant, observer);
   
   // Normalize by the white point to get relative XYZ (0..1)
   const normalizedX = X / whiteX;
@@ -345,6 +372,9 @@ export function convertSpectrumToColor(
   const x = normalizedX / total;
   const y = normalizedY / total;
   
+  // CIELAB / LCh (relative to the white of the selected illuminant and observer)
+  const { lab, lch } = xyzToLabLch(normalizedX, normalizedY, normalizedZ, getWhitePoint(illuminant, observer));
+  
   // Convert to RGB
   const [r, g, b] = xyzToRgb(normalizedX, normalizedY, normalizedZ, illuminant, observer, applyGammaCorrection);
   const hex = rgbToHex(r, g, b);
@@ -362,6 +392,8 @@ export function convertSpectrumToColor(
     rgb: [r, g, b],
     xyz: [normalizedX, normalizedY, normalizedZ],
     chromaticity: [x, y],
+    lab,
+    lch,
     hex,
     normalizedRgb,
     normalizedHex,

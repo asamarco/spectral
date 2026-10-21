@@ -830,6 +830,24 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                     </div>
                     
                     <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">CIE L*C*h° (lightness, chroma, hue)</div>
+                      <div className="font-mono">
+                        L*: {colorResults[currentGroup]?.lch[0].toFixed(1)}<br />
+                        C*: {colorResults[currentGroup]?.lch[1].toFixed(1)}<br />
+                        h°: {colorResults[currentGroup]?.lch[2].toFixed(1)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-sm font-medium text-muted-foreground">CIE L*a*b*</div>
+                      <div className="font-mono">
+                        L*: {colorResults[currentGroup]?.lab[0].toFixed(1)}<br />
+                        a*: {colorResults[currentGroup]?.lab[1].toFixed(1)}<br />
+                        b*: {colorResults[currentGroup]?.lab[2].toFixed(1)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 p-3 rounded-lg">
                       <div className="text-sm font-medium text-muted-foreground">Chromaticity (x,y)</div>
                       <div className="font-mono">
                         x: {colorResults[currentGroup]?.chromaticity[0].toFixed(4)}<br />
