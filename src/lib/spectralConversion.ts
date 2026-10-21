@@ -247,10 +247,17 @@ function xyzToRgb(X: number, Y: number, Z: number, illuminant: IlluminantType, o
   
   console.log('Normalized XYZ:', { normalizedX, normalizedY, normalizedZ });
   
-  // Convert to sRGB using standard matrix transformation (D65 illuminant)
-  let r = 3.2406 * normalizedX - 1.5372 * normalizedY - 0.4986 * normalizedZ;
-  let g = -0.9689 * normalizedX + 1.8758 * normalizedY + 0.0415 * normalizedZ;
-  let b = 0.0557 * normalizedX - 0.2040 * normalizedY + 1.0570 * normalizedZ;
+  // The sRGB matrix expects XYZ whose white is D65 (0.95047, 1, 1.08883). Relative XYZ above has
+  // white = (1, 1, 1) for whatever illuminant is selected, so scale it to the sRGB white first
+  // (XYZ-scaling adaptation): a perfect reflector then maps to RGB (255, 255, 255) and greys stay neutral.
+  const sx = normalizedX * 0.95047;
+  const sy = normalizedY;
+  const sz = normalizedZ * 1.08883;
+  
+  // Convert to linear sRGB using the standard matrix (D65)
+  let r = 3.2406 * sx - 1.5372 * sy - 0.4986 * sz;
+  let g = -0.9689 * sx + 1.8758 * sy + 0.0415 * sz;
+  let b = 0.0557 * sx - 0.2040 * sy + 1.0570 * sz;
   
   console.log('Linear RGB before gamma:', { r, g, b });
   
