@@ -592,6 +592,16 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   </div>
                 </PopoverContent>
               </Popover>
+              <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{'0<R<1'}</span>
+                <Switch
+                  aria-label="Reflectance in percent"
+                  checked={isPercent}
+                  onCheckedChange={setPercentOverride}
+                  className="scale-75"
+                />
+                <span>{'0<R<100'}</span>
+              </div>
             </div>
             <Textarea
               id="spectral-data"
@@ -606,22 +616,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
           </div>
           
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="reflectance-percent" className="text-sm">
-                  Reflectance values are in percent (0-100)
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Auto-detected: {detectedPercent ? 'percent (values above 2 found)' : 'fraction (0-1)'}
-                </p>
-              </div>
-              <Switch
-                id="reflectance-percent"
-                checked={isPercent}
-                onCheckedChange={setPercentOverride}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="illuminant-select" className="text-sm font-medium">
                 Standard Illuminant
