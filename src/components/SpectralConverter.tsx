@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -6,10 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Upload, Palette, BarChart3, Info, TrendingUp, ExternalLink } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
+import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, detectPercentReflectance, toFractionalReflectance, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ChromaticityDiagram from './ChromaticityDiagram';
@@ -344,6 +345,9 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
       return [];
     }
   });
+  const [percentOverride, setPercentOverride] = useState<boolean | null>(null);
+  const detectedPercent = useMemo(() => detectPercentReflectance(spectralData), [spectralData]);
+  const isPercent = percentOverride ?? detectedPercent;
   const [currentGroup, setCurrentGroup] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showNormalized, setShowNormalized] = useState(false);
@@ -377,15 +381,16 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
       }
 
       setSpectralData(parsed);
+      const fractional = toFractionalReflectance(parsed, isPercent);
 
       const uniqueGroups = getGroups(parsed);
       setGroups(uniqueGroups);
-      
+
       if (uniqueGroups.length > 0) {
         // Convert each group separately
         const results: ColorResult[] = [];
         for (const group of uniqueGroups) {
-          const result = convertSpectrumToColor(parsed, group, selectedIlluminant, selectedObserver, applyGammaCorrection);
+          const result = convertSpectrumToColor(fractional, group, selectedIlluminant, selectedObserver, applyGammaCorrection);
           if (result) {
             results.push(result);
           }
@@ -403,7 +408,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
         }
       } else {
         // Single group (no group column)
-        const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, selectedObserver, applyGammaCorrection);
+        const result = convertSpectrumToColor(fractional, undefined, selectedIlluminant, selectedObserver, applyGammaCorrection);
         if (result) {
           setColorResults([result]);
           setGroups([]);
@@ -427,7 +432,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [spectralInput, toast, selectedIlluminant, selectedObserver, applyGammaCorrection]);
+  }, [spectralInput, toast, selectedIlluminant, selectedObserver, applyGammaCorrection, isPercent]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -437,6 +442,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       setSpectralInput(content);
+      setPercentOverride(null);
       
       // Parse spectral data immediately for preview
       try {
@@ -485,6 +491,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
 
   const useExample = useCallback(() => {
     setSpectralInput(exampleData);
+    setPercentOverride(null);
     handleInputChange(exampleData);
     toast({
       title: "Example loaded",
@@ -599,6 +606,22 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
           </div>
           
           <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="reflectance-percent" className="text-sm">
+                  Reflectance values are in percent (0-100)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Auto-detected: {detectedPercent ? 'percent (values above 2 found)' : 'fraction (0-1)'}
+                </p>
+              </div>
+              <Switch
+                id="reflectance-percent"
+                checked={isPercent}
+                onCheckedChange={setPercentOverride}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="illuminant-select" className="text-sm font-medium">
                 Standard Illuminant

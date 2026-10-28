@@ -448,6 +448,16 @@ export function parseSpectralData(text: string): SpectralData[] {
   });
 }
 
+// A 0-1 fraction should not exceed 2, so larger values indicate percent
+export function detectPercentReflectance(spectralData: SpectralData[]): boolean {
+  return spectralData.some(d => d.intensity > 2);
+}
+
+export function toFractionalReflectance(spectralData: SpectralData[], isPercent: boolean): SpectralData[] {
+  if (!isPercent) return spectralData;
+  return spectralData.map(d => ({ ...d, intensity: d.intensity / 100 }));
+}
+
 // Get unique groups from spectral data
 export function getGroups(spectralData: SpectralData[]): number[] {
   const groups = new Set<number>();
