@@ -1,4 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ThinFilmDesigner } from './ThinFilmDesigner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -356,6 +358,22 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const [selectedObserver, setSelectedObserver] = useState<ObserverType>('2');
   const [showGloss, setShowGloss] = useState(false);
   const { toast } = useToast();
+  const [inputMode, setInputMode] = useState<'data' | 'stack'>('data');
+  const [stackText, setStackText] = useState('');
+  const handleStackSpectrum = useCallback((text: string) => setStackText(text), []);
+
+  // Live conversion of the simulated thin-film spectrum (no toasts, recomputed on every change)
+  useEffect(() => {
+    if (inputMode !== 'stack' || !stackText) return;
+    const parsed = parseSpectralData(stackText);
+    setSpectralInput(stackText);
+    setSpectralData(parsed);
+    setGroups([]);
+    setCurrentGroup(0);
+    const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, selectedObserver, applyGammaCorrection);
+    setColorResults(result ? [result] : []);
+  }, [inputMode, stackText, selectedIlluminant, selectedObserver, applyGammaCorrection]);
+
 
   const handleConvert = useCallback(() => {
     if (!spectralInput.trim()) {
@@ -536,10 +554,16 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             Spectral Data Input
           </CardTitle>
           <CardDescription>
-            Enter spectral data, upload a file, or use the example data.
+            Enter measured data, or design a thin-film stack and see its colour update live.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'data' | 'stack')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="data">Measured data</TabsTrigger>
+              <TabsTrigger value="stack">Thin-film stack</TabsTrigger>
+            </TabsList>
+            <TabsContent value="data" className="space-y-4 mt-4">
           <div className="flex flex-wrap gap-2">
             <div className="relative">
               <input
@@ -615,6 +639,12 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             />
           </div>
           
+            </TabsContent>
+            <TabsContent value="stack" className="mt-4">
+              <ThinFilmDesigner onSpectrum={handleStackSpectrum} />
+            </TabsContent>
+          </Tabs>
+
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="illuminant-select" className="text-sm font-medium">
@@ -664,13 +694,13 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             </div>
           </div>
           
-          <Button
+          {inputMode === 'data' && <Button
             onClick={handleConvert}
             disabled={isLoading}
             className="w-full bg-primary hover:bg-primary/90"
           >
             {isLoading ? 'Converting...' : 'Convert to Color'}
-          </Button>
+          </Button>}
         </CardContent>
       </Card>
 
