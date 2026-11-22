@@ -563,7 +563,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               <TabsTrigger value="data">Measured data</TabsTrigger>
               <TabsTrigger value="stack">Thin-film stack</TabsTrigger>
             </TabsList>
-            <TabsContent value="data" className="space-y-4 mt-4">
+            <TabsContent value="data" forceMount className="space-y-4 mt-4 data-[state=inactive]:hidden">
           <div className="flex flex-wrap gap-2">
             <div className="relative">
               <input
@@ -640,7 +640,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
           </div>
           
             </TabsContent>
-            <TabsContent value="stack" className="mt-4">
+            <TabsContent value="stack" forceMount className="mt-4 data-[state=inactive]:hidden">
               <ThinFilmDesigner onSpectrum={handleStackSpectrum} />
             </TabsContent>
           </Tabs>
