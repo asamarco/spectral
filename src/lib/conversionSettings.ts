@@ -1,0 +1,1 @@
+export const DEFAULT_APPLY_GAMMA_CORRECTION = true;

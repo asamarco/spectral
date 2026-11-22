@@ -1,0 +1,3 @@
+- [x] Remove normalized-color display controls.
+- [x] Place the preview below the plot with one vertical band per dataset.
+- [x] Enable gamma correction by default and verify measured and simulated previews.

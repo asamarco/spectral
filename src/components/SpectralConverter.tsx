@@ -16,6 +16,7 @@ import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIllum
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ChromaticityDiagram from './ChromaticityDiagram';
+import { DEFAULT_APPLY_GAMMA_CORRECTION } from '@/lib/conversionSettings';
 
 interface SpectralConverterProps {
   className?: string;
@@ -352,8 +353,7 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
   const isPercent = percentOverride ?? detectedPercent;
   const [currentGroup, setCurrentGroup] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [showNormalized, setShowNormalized] = useState(false);
-  const [applyGammaCorrection, setApplyGammaCorrection] = useState(false);
+  const [applyGammaCorrection, setApplyGammaCorrection] = useState(DEFAULT_APPLY_GAMMA_CORRECTION);
   const [selectedIlluminant, setSelectedIlluminant] = useState<IlluminantType>('D65');
   const [selectedObserver, setSelectedObserver] = useState<ObserverType>('2');
   const [showGloss, setShowGloss] = useState(false);
@@ -775,6 +775,30 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+              {colorResults.length > 0 && (
+                <section className="mt-6 space-y-3" aria-label="Color preview">
+                  <h3 className="font-semibold">Color Preview</h3>
+                  <div className="spectrum-swatch flex h-32 w-full overflow-hidden rounded-lg">
+                    {colorResults.map((result, index) => (
+                      <div
+                        key={index}
+                        className={`h-full min-w-0 flex-1 ${showGloss ? 'spectrum-swatch-gloss' : ''}`}
+                        style={{ backgroundColor: result.hex }}
+                        role="img"
+                        aria-label={`${groups[index] !== undefined ? `Dataset ${groups[index]}` : 'Spectrum'}: ${result.hex.toUpperCase()}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex w-full">
+                    {colorResults.map((result, index) => (
+                      <div key={index} className="min-w-0 flex-1 px-1 text-center text-xs">
+                        {groups[index] !== undefined && <div className="text-muted-foreground">{groups[index]}</div>}
+                        <div className="break-all font-mono">{result.hex.toUpperCase()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </CardContent>
           </Card>
       </div>
@@ -817,17 +841,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Checkbox 
-                  id="normalize" 
-                  checked={showNormalized}
-                  onCheckedChange={(checked) => setShowNormalized(checked as boolean)}
-                />
-                <Label htmlFor="normalize" className="text-sm">
-                  Show normalized color (divide by max(R,G,B) × 255)
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
                   id="gloss" 
                   checked={showGloss}
                   onCheckedChange={(checked) => setShowGloss(checked as boolean)}
@@ -842,20 +855,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Color Swatch */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold">Color Preview</h3>
-                  <div 
-                    className={`spectrum-swatch h-32 w-full rounded-lg ${showGloss ? 'spectrum-swatch-gloss' : ''}`}
-                    style={{ backgroundColor: showNormalized ? colorResults[currentGroup]?.normalizedHex : colorResults[currentGroup]?.hex }}
-                  />
-                  <div className="text-center">
-                    <div className="text-2xl font-mono font-bold">
-                      {showNormalized ? colorResults[currentGroup]?.normalizedHex.toUpperCase() : colorResults[currentGroup]?.hex.toUpperCase()}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {showNormalized ? 'Normalized Hex Color Code' : 'Hex Color Code'}
-                    </div>
-                  </div>
-                  
                   {/* Chromaticity Diagram - CIE 1931 (2°) or CIE 1964 (10°), chosen inside the component by observer */}
                   <ChromaticityDiagram 
                     chromaticity={colorResults.length > 0 ? colorResults.map((res, idx) => ({
@@ -874,10 +873,10 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                   <div className="space-y-3">
                     <div className="bg-muted/50 p-3 rounded-lg">
                       <div className="text-sm font-medium text-muted-foreground">
-                        {showNormalized ? 'Normalized RGB' : 'RGB'}
+                        RGB
                       </div>
                       <div className="font-mono">
-                        R: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[0] : colorResults[currentGroup]?.rgb[0]}, G: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[1] : colorResults[currentGroup]?.rgb[1]}, B: {showNormalized ? colorResults[currentGroup]?.normalizedRgb[2] : colorResults[currentGroup]?.rgb[2]}
+                        R: {colorResults[currentGroup]?.rgb[0]}, G: {colorResults[currentGroup]?.rgb[1]}, B: {colorResults[currentGroup]?.rgb[2]}
                       </div>
                     </div>
                     
