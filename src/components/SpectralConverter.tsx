@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { Upload, Palette, BarChart3, Info, TrendingUp, ExternalLink } from 'lucide-react';
+import { Upload, Palette, BarChart3, Info, TrendingUp } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { convertSpectrumToColor, parseSpectralData, getGroups, getAvailableIlluminants, getAvailableObservers, detectPercentReflectance, toFractionalReflectance, type ColorResult, type SpectralData, type IlluminantType, type ObserverType } from '@/lib/spectralConversion';
@@ -580,17 +580,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
             <Button variant="outline" size="sm" onClick={useExample}>
               Use Example Data
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href="https://www.kla.com/products/instruments/reflectance-calculator?wmin=380&wmax=780&wstep=5&angle=0&pol=mixed&units=nm&mat%5B%5D=Air&d%5B%5D=0&mat%5B%5D=Al2O3&d%5B%5D=100&mat%5B%5D=Si&d%5B%5D=0&sptype=r"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Simulate Spectrum (KLA)
-              </a>
-            </Button>
           </div>
           
           <div className="space-y-2">
@@ -797,6 +786,16 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                       </div>
                     ))}
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="gloss"
+                      checked={showGloss}
+                      onCheckedChange={(checked) => setShowGloss(checked === true)}
+                    />
+                    <Label htmlFor="gloss" className="text-sm">
+                      Show gloss effect
+                    </Label>
+                  </div>
                 </section>
               )}
             </CardContent>
@@ -837,19 +836,6 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
                 />
               </div>
             )}
-            
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="gloss" 
-                  checked={showGloss}
-                  onCheckedChange={(checked) => setShowGloss(checked as boolean)}
-                />
-                <Label htmlFor="gloss" className="text-sm">
-                  Show gloss effect
-                </Label>
-              </div>
-            </div>
             
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
