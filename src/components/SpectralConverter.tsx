@@ -368,10 +368,15 @@ export function SpectralConverter({ className }: SpectralConverterProps) {
     const parsed = parseSpectralData(stackText);
     setSpectralInput(stackText);
     setSpectralData(parsed);
-    setGroups([]);
-    setCurrentGroup(0);
-    const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, selectedObserver, applyGammaCorrection);
-    setColorResults(result ? [result] : []);
+    const g = getGroups(parsed);
+    setGroups(g);
+    setCurrentGroup((c) => (c < Math.max(g.length, 1) ? c : 0));
+    if (g.length > 0) {
+      setColorResults(g.map((id) => convertSpectrumToColor(parsed, id, selectedIlluminant, selectedObserver, applyGammaCorrection)).filter(Boolean) as typeof colorResults);
+    } else {
+      const result = convertSpectrumToColor(parsed, undefined, selectedIlluminant, selectedObserver, applyGammaCorrection);
+      setColorResults(result ? [result] : []);
+    }
   }, [inputMode, stackText, selectedIlluminant, selectedObserver, applyGammaCorrection]);
 
 

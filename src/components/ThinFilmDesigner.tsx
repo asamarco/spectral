@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { buildAngleList } from '@/lib/angleSweep';
 import { MATERIALS, reflectanceSpectrum, type Layer, type Polarization } from '@/lib/tmm';
 
 interface StackLayer extends Layer { id: number }
@@ -40,13 +41,25 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
   const [substrate, setSubstrate] = useState('Si');
   const [layers, setLayers] = useState<StackLayer[]>(() => PRESETS.alumina.layers());
   const [angle, setAngle] = useState(0);
+  const [angleMode, setAngleMode] = useState<'single' | 'sweep'>('single');
+  const [sweepStart, setSweepStart] = useState(0);
+  const [sweepEnd, setSweepEnd] = useState(75);
+  const [sweepStep, setSweepStep] = useState(15);
   const [pol, setPol] = useState<Polarization>('unpolarized');
   const [maxThickness, setMaxThickness] = useState(500);
 
   useEffect(() => {
+    if (angleMode === 'sweep') {
+      const lines: string[] = [];
+      for (const a of buildAngleList(sweepStart, sweepEnd, sweepStep)) {
+        for (const p of reflectanceSpectrum(ambient, layers, substrate, a, pol)) lines.push(`${p.wavelength}\t${a}\t${p.R.toFixed(5)}`);
+      }
+      onSpectrum(lines.join('\n'));
+      return;
+    }
     const spec = reflectanceSpectrum(ambient, layers, substrate, angle, pol);
     onSpectrum(spec.map((p) => `${p.wavelength}\t${p.R.toFixed(5)}`).join('\n'));
-  }, [ambient, substrate, layers, angle, pol, onSpectrum]);
+  }, [ambient, substrate, layers, angle, pol, onSpectrum, angleMode, sweepStart, sweepEnd, sweepStep]);
 
   const update = (id: number, patch: Partial<StackLayer>) =>
     setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -137,8 +150,29 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Incidence angle: {angle}°</Label>
-          <Slider value={[angle]} min={0} max={85} step={1} onValueChange={(v) => setAngle(v[0])} aria-label="Incidence angle" />
+          <Select value={angleMode} onValueChange={(v) => setAngleMode(v as 'single' | 'sweep')}>
+            <SelectTrigger className="h-8 text-xs" aria-label="Angle mode"><SelectValue /></SelectTrigger>
+            <SelectContent className="z-50">
+              <SelectItem value="single">Single angle</SelectItem>
+              <SelectItem value="sweep">Angle range</SelectItem>
+            </SelectContent>
+          </Select>
+          {angleMode === 'single' ? (
+            <>
+              <Label className="text-xs text-muted-foreground">Incidence angle: {angle}°</Label>
+              <Slider value={[angle]} min={0} max={85} step={1} onValueChange={(v) => setAngle(v[0])} aria-label="Incidence angle" />
+            </>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {([['Start °', sweepStart, setSweepStart], ['End °', sweepEnd, setSweepEnd], ['Step °', sweepStep, setSweepStep]] as const).map(([lbl, val, set]) => (
+                <div key={lbl} className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{lbl}</Label>
+                  <Input type="number" className="h-8" value={val} min={0} max={89} aria-label={lbl}
+                    onChange={(e) => set(Number(e.target.value))} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Polarization</Label>
