@@ -1,5 +1,7 @@
 // Coherent thin-film transfer-matrix (Airy recursion) solver for planar isotropic stacks.
 // Refractive index convention: N = n + i k, fields ~ exp(i(kz - wt)).
+import { COPPER_NK, TITANIUM_NK } from './data/metalOpticalConstants';
+import { interpolateNK, type MaterialRegistry, type OpticalMaterial } from './opticalMaterials';
 
 export type Complex = { re: number; im: number };
 const c = (re: number, im = 0): Complex => ({ re, im });
@@ -23,7 +25,7 @@ const cexp = (a: Complex): Complex => {
 const abs2 = (a: Complex) => a.re * a.re + a.im * a.im;
 
 export type MaterialKey = string;
-interface Material { name: string; nk: (lambdaNm: number) => Complex }
+type Material = OpticalMaterial;
 
 const cauchy = (A: number, B: number, C = 0) => (l: number) => {
   const um = l / 1000;
@@ -47,6 +49,8 @@ const table = (rows: [number, number, number][]) => (l: number): Complex => {
 
 // Approximate literature values (visible range) — suitable for colour design, not metrology.
 export const MATERIALS: Record<MaterialKey, Material> = {
+  Cu: { name: 'Copper (Cu)', nk: (l) => interpolateNK(COPPER_NK, l) },
+  Ti: { name: 'Titanium (Ti)', nk: (l) => interpolateNK(TITANIUM_NK, l) },
   Air: { name: 'Air', nk: () => c(1, 0) },
   Water: { name: 'Water', nk: cauchy(1.324, 0.00306) },
   MgF2: { name: 'MgF₂', nk: cauchy(1.370, 0.0026) },
@@ -115,9 +119,14 @@ function reflectancePol(pol: 's' | 'p', Ns: Complex[], ds: number[], angleRad: n
 export function reflectance(
   ambient: MaterialKey, layers: Layer[], substrate: MaterialKey,
   lambdaNm: number, angleDeg = 0, pol: Polarization = 'unpolarized',
+  materials: MaterialRegistry = MATERIALS,
 ): number {
   const keys = [ambient, ...layers.map((l) => l.material), substrate];
-  const Ns = keys.map((k) => (MATERIALS[k] ?? MATERIALS.Air).nk(lambdaNm));
+  const Ns = keys.map((k) => {
+    const material = materials[k];
+    if (!material) throw new Error(`Unknown optical material: ${k}`);
+    return material.nk(lambdaNm);
+  });
   const ds = [0, ...layers.map((l) => Math.max(0, l.thickness)), 0];
   const a = (angleDeg * Math.PI) / 180;
   if (pol === 'unpolarized') {
@@ -129,8 +138,9 @@ export function reflectance(
 export function reflectanceSpectrum(
   ambient: MaterialKey, layers: Layer[], substrate: MaterialKey,
   angleDeg = 0, pol: Polarization = 'unpolarized', min = 380, max = 780, step = 5,
+  materials: MaterialRegistry = MATERIALS,
 ): { wavelength: number; R: number }[] {
   const out: { wavelength: number; R: number }[] = [];
-  for (let l = min; l <= max + 1e-9; l += step) out.push({ wavelength: l, R: reflectance(ambient, layers, substrate, l, angleDeg, pol) });
+  for (let l = min; l <= max + 1e-9; l += step) out.push({ wavelength: l, R: reflectance(ambient, layers, substrate, l, angleDeg, pol, materials) });
   return out;
 }

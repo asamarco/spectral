@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { buildAngleList } from '@/lib/angleSweep';
 import { MATERIALS, reflectanceSpectrum, type Layer, type Polarization } from '@/lib/tmm';
+import { MaterialEditor, type CustomMaterialEntry } from '@/components/MaterialEditor';
+import type { MaterialRegistry } from '@/lib/opticalMaterials';
 
 interface StackLayer extends Layer { id: number }
 interface Props { onSpectrum: (text: string) => void }
@@ -23,14 +25,12 @@ const PRESETS: Record<string, { label: string; ambient: string; substrate: strin
   mim: { label: 'Ag / SiO₂ / Ag absorber', ambient: 'Air', substrate: 'Glass', layers: () => [L('Ag', 20), L('SiO2', 150), L('Ag', 100)] },
 };
 
-const materialKeys = Object.keys(MATERIALS);
-
-function MaterialSelect({ value, onChange, id }: { value: string; onChange: (v: string) => void; id?: string }) {
+function MaterialSelect({ value, onChange, id, materials }: { value: string; onChange: (v: string) => void; id?: string; materials: MaterialRegistry }) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger id={id} className="h-9"><SelectValue /></SelectTrigger>
       <SelectContent className="z-50">
-        {materialKeys.map((k) => <SelectItem key={k} value={k}>{MATERIALS[k].name}</SelectItem>)}
+        {Object.entries(materials).map(([k, material]) => <SelectItem key={k} value={k}>{material.name}</SelectItem>)}
       </SelectContent>
     </Select>
   );
@@ -47,19 +47,21 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
   const [sweepStep, setSweepStep] = useState(15);
   const [pol, setPol] = useState<Polarization>('unpolarized');
   const [maxThickness, setMaxThickness] = useState(500);
+  const [customMaterials, setCustomMaterials] = useState<Record<string, CustomMaterialEntry>>({});
+  const materials = useMemo(() => ({ ...MATERIALS, ...Object.fromEntries(Object.entries(customMaterials).map(([key, entry]) => [key, entry.material])) }), [customMaterials]);
 
   useEffect(() => {
     if (angleMode === 'sweep') {
       const lines: string[] = [];
       for (const a of buildAngleList(sweepStart, sweepEnd, sweepStep)) {
-        for (const p of reflectanceSpectrum(ambient, layers, substrate, a, pol)) lines.push(`${p.wavelength}\t${a}\t${p.R.toFixed(5)}`);
+        for (const p of reflectanceSpectrum(ambient, layers, substrate, a, pol, 380, 780, 5, materials)) lines.push(`${p.wavelength}\t${a}\t${p.R.toFixed(5)}`);
       }
       onSpectrum(lines.join('\n'));
       return;
     }
-    const spec = reflectanceSpectrum(ambient, layers, substrate, angle, pol);
+    const spec = reflectanceSpectrum(ambient, layers, substrate, angle, pol, 380, 780, 5, materials);
     onSpectrum(spec.map((p) => `${p.wavelength}\t${p.R.toFixed(5)}`).join('\n'));
-  }, [ambient, substrate, layers, angle, pol, onSpectrum, angleMode, sweepStart, sweepEnd, sweepStep]);
+  }, [ambient, substrate, layers, angle, pol, onSpectrum, angleMode, sweepStart, sweepEnd, sweepStep, materials]);
 
   const update = (id: number, patch: Partial<StackLayer>) =>
     setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -90,9 +92,11 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
         </div>
         <div className="space-y-1">
           <Label htmlFor="ambient" className="text-xs text-muted-foreground">Ambient (top)</Label>
-          <MaterialSelect id="ambient" value={ambient} onChange={setAmbient} />
+          <MaterialSelect id="ambient" value={ambient} onChange={setAmbient} materials={materials} />
         </div>
       </div>
+
+      <MaterialEditor entries={customMaterials} onSave={(key, entry) => setCustomMaterials((old) => ({ ...old, [key ?? `custom-${crypto.randomUUID()}`]: entry }))} />
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -116,7 +120,7 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
           <div key={layer.id} className="rounded-md border bg-muted/30 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <span className="w-5 text-xs font-mono text-muted-foreground">{i + 1}</span>
-              <div className="flex-1"><MaterialSelect value={layer.material} onChange={(v) => update(layer.id, { material: v })} /></div>
+              <div className="flex-1 min-w-0"><MaterialSelect value={layer.material} onChange={(v) => update(layer.id, { material: v })} materials={materials} /></div>
               <Input
                 type="number" min={0} step={1}
                 value={layer.thickness}
@@ -145,7 +149,7 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
 
       <div className="space-y-1">
         <Label htmlFor="substrate" className="text-xs text-muted-foreground">Substrate (bottom)</Label>
-        <MaterialSelect id="substrate" value={substrate} onChange={setSubstrate} />
+        <MaterialSelect id="substrate" value={substrate} onChange={setSubstrate} materials={materials} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
