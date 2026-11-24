@@ -3,6 +3,6 @@
 - [x] Enable gamma correction by default and verify measured and simulated previews.
 - [x] Remove the external simulation link.
 - [x] Move and verify the gloss control below the preview.
-- [ ] Add custom Cauchy and Sellmeier materials and n,k table import.
-- [ ] Add sourced Cu and Ti optical constants to default materials.
-- [ ] Test custom materials and verify live stack updates.
+- [x] Add custom Cauchy and Sellmeier materials and n,k table import.
+- [x] Add sourced Cu and Ti optical constants to default materials.
+- [x] Test custom materials and verify live stack updates.
