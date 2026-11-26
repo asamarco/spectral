@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { DispersionView } from '@/components/DispersionView';
-import { Plus, Save, Upload, X } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,12 @@ export interface CustomMaterialEntry { material: OpticalMaterial; definition: Ma
 interface Props {
   entries: Record<string, CustomMaterialEntry>;
   onSave: (key: string | undefined, entry: CustomMaterialEntry) => void;
+  onDelete: (key: string) => void;
 }
 const CAUCHY = ['1.5', '0.004', '0'];
 const SELLMEIER = ['1.03961212', '0.231792344', '1.01046945', '0.00600069867', '0.0200179144', '103.560653'];
 
-export function MaterialEditor({ entries, onSave }: Props) {
+export function MaterialEditor({ entries, onSave, onDelete }: Props) {
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState('new');
   const [name, setName] = useState('');
@@ -118,6 +119,10 @@ export function MaterialEditor({ entries, onSave }: Props) {
         {preview ? <DispersionView material={preview} /> : <p className="text-xs text-muted-foreground">Dispersion preview appears once the definition is valid for 380–780 nm.</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <Button size="sm" onClick={save}><Save className="mr-1 h-4 w-4" /> {key === 'new' ? 'Add material' : 'Save material'}</Button>
+        {key !== 'new' && <Button size="sm" variant="outline" className="ml-2" onClick={() => {
+          if (!confirm(`Delete material "${entries[key]?.material.name}"? Layers using it will switch to a built-in material.`)) return;
+          onDelete(key); load('new');
+        }}><Trash2 className="mr-1 h-4 w-4" /> Delete material</Button>}
       </section>}
     </div>
   );

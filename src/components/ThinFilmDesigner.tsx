@@ -135,7 +135,12 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
         </div>
       </div>
 
-      <MaterialEditor entries={customMaterials} onSave={(key, entry) => setCustomMaterials((old) => ({ ...old, [key ?? `custom-${crypto.randomUUID()}`]: entry }))} />
+      <MaterialEditor entries={customMaterials} onDelete={(key) => {
+        setCustomMaterials((old) => { const c = { ...old }; delete c[key]; return c; });
+        setAmbient((a) => (a === key ? 'Air' : a));
+        setSubstrate((s) => (s === key ? 'Si' : s));
+        setLayers((ls) => ls.map((l) => (l.material === key ? { ...l, material: 'SiO2' } : l)));
+      }} onSave={(key, entry) => setCustomMaterials((old) => ({ ...old, [key ?? `custom-${crypto.randomUUID()}`]: entry }))} />
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
