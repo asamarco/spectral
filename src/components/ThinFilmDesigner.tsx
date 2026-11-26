@@ -8,10 +8,10 @@ import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from 'lucide-react';
 import { buildAngleList } from '@/lib/angleSweep';
 import { MATERIALS, reflectanceSpectrum, type Layer, type Polarization } from '@/lib/tmm';
 import { MaterialEditor, type CustomMaterialEntry } from '@/components/MaterialEditor';
-import type { MaterialRegistry } from '@/lib/opticalMaterials';
+import { createOpticalMaterial, type MaterialDefinition, type MaterialRegistry } from '@/lib/opticalMaterials';
 
 interface StackLayer extends Layer { id: number }
-interface SavedPreset { label: string; ambient: string; substrate: string; layers: Layer[] }
+interface SavedPreset { label: string; ambient: string; substrate: string; layers: Layer[]; materials?: Record<string, { name: string; definition: MaterialDefinition }> }
 const PRESET_STORAGE = 'thinfilm-user-presets';
 interface Props { onSpectrum: (text: string) => void }
 
@@ -85,7 +85,13 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
     if (key.startsWith('user-')) {
       const p = userPresets[key];
       if (!p) return;
-      const missing = [p.ambient, p.substrate, ...p.layers.map((l) => l.material)].filter((m) => !materials[m]);
+      const restored: Record<string, CustomMaterialEntry> = {};
+      for (const [k, m] of Object.entries(p.materials ?? {})) {
+        try { restored[k] = { material: createOpticalMaterial(m.name, m.definition), definition: m.definition }; } catch { /* skip invalid */ }
+      }
+      if (Object.keys(restored).length) setCustomMaterials((old) => ({ ...old, ...restored }));
+      const available = { ...materials, ...Object.fromEntries(Object.entries(restored).map(([k, e]) => [k, e.material])) };
+      const missing = [p.ambient, p.substrate, ...p.layers.map((l) => l.material)].filter((m) => !available[m]);
       if (missing.length) { alert('This preset uses custom materials that are no longer defined.'); return; }
       setAmbient(p.ambient); setSubstrate(p.substrate); setLayers(p.layers.map((l) => L(l.material, l.thickness)));
       return;
@@ -97,7 +103,7 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
     const label = prompt('Name for this stack preset:')?.trim();
     if (!label) return;
     const key = `user-${crypto.randomUUID()}`;
-    setUserPresets((old) => ({ ...old, [key]: { label, ambient, substrate, layers: layers.map(({ material, thickness }) => ({ material, thickness })) } }));
+    setUserPresets((old) => ({ ...old, [key]: { label, ambient, substrate, layers: layers.map(({ material, thickness }) => ({ material, thickness })), materials: Object.fromEntries([ambient, substrate, ...layers.map((l) => l.material)].filter((k) => customMaterials[k]).map((k) => [k, { name: customMaterials[k].material.name, definition: customMaterials[k].definition }])) } }));
     setPresetValue(key);
   };
   const deletePreset = () => {
