@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { DispersionView } from '@/components/DispersionView';
 import { Plus, Save, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,16 @@ export function MaterialEditor({ entries, onSave }: Props) {
       setText(entry.definition.rows.map((r) => r.join('\t')).join('\n')); setUnit('nm');
     } else setCoefficients(entry.definition.coefficients.map(String));
   };
+  const preview = useMemo(() => {
+    try {
+      if (model === 'table') return createOpticalMaterial(name.trim() || 'Preview', { model, rows: parseNKTable(text, unit) });
+      if (coefficients.some((v) => !v.trim())) return null;
+      const v = coefficients.map(Number);
+      return createOpticalMaterial(name.trim() || 'Preview', model === 'cauchy'
+        ? { model, coefficients: [v[0], v[1], v[2]] }
+        : { model, coefficients: [v[0], v[1], v[2], v[3], v[4], v[5]] });
+    } catch { return null; }
+  }, [model, coefficients, text, unit, name]);
   const save = () => {
     try {
       if (coefficients.some((v) => !v.trim()) && model !== 'table') throw new Error('Fill in every coefficient.');
@@ -104,6 +115,7 @@ export function MaterialEditor({ entries, onSave }: Props) {
           <Label htmlFor="nk-table" className="text-xs text-muted-foreground">Wavelength, n, k · 380–780 nm coverage · comma, tab or space separated</Label>
           <Textarea id="nk-table" className="h-32 font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} placeholder={'380 1.5 0.1\n780 1.4 0.2'} />
         </>}
+        {preview ? <DispersionView material={preview} /> : <p className="text-xs text-muted-foreground">Dispersion preview appears once the definition is valid for 380–780 nm.</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <Button size="sm" onClick={save}><Save className="mr-1 h-4 w-4" /> {key === 'new' ? 'Add material' : 'Save material'}</Button>
       </section>}
