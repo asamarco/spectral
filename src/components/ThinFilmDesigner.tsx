@@ -4,13 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from 'lucide-react';
 import { buildAngleList } from '@/lib/angleSweep';
 import { MATERIALS, reflectanceSpectrum, type Layer, type Polarization } from '@/lib/tmm';
 import { MaterialEditor, type CustomMaterialEntry } from '@/components/MaterialEditor';
 import type { MaterialRegistry } from '@/lib/opticalMaterials';
 
 interface StackLayer extends Layer { id: number }
+interface SavedPreset { label: string; ambient: string; substrate: string; layers: Layer[] }
+const PRESET_STORAGE = 'thinfilm-user-presets';
 interface Props { onSpectrum: (text: string) => void }
 
 let nextId = 1;
@@ -48,6 +50,11 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
   const [pol, setPol] = useState<Polarization>('unpolarized');
   const [maxThickness, setMaxThickness] = useState(500);
   const [customMaterials, setCustomMaterials] = useState<Record<string, CustomMaterialEntry>>({});
+  const [userPresets, setUserPresets] = useState<Record<string, SavedPreset>>(() => {
+    try { return JSON.parse(localStorage.getItem(PRESET_STORAGE) || '{}'); } catch { return {}; }
+  });
+  const [presetValue, setPresetValue] = useState('');
+  useEffect(() => { localStorage.setItem(PRESET_STORAGE, JSON.stringify(userPresets)); }, [userPresets]);
   const materials = useMemo(() => ({ ...MATERIALS, ...Object.fromEntries(Object.entries(customMaterials).map(([key, entry]) => [key, entry.material])) }), [customMaterials]);
 
   useEffect(() => {
@@ -74,8 +81,29 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
       return copy;
     });
   const applyPreset = (key: string) => {
+    setPresetValue(key);
+    if (key.startsWith('user-')) {
+      const p = userPresets[key];
+      if (!p) return;
+      const missing = [p.ambient, p.substrate, ...p.layers.map((l) => l.material)].filter((m) => !materials[m]);
+      if (missing.length) { alert('This preset uses custom materials that are no longer defined.'); return; }
+      setAmbient(p.ambient); setSubstrate(p.substrate); setLayers(p.layers.map((l) => L(l.material, l.thickness)));
+      return;
+    }
     const p = PRESETS[key];
     setAmbient(p.ambient); setSubstrate(p.substrate); setLayers(p.layers());
+  };
+  const savePreset = () => {
+    const label = prompt('Name for this stack preset:')?.trim();
+    if (!label) return;
+    const key = `user-${crypto.randomUUID()}`;
+    setUserPresets((old) => ({ ...old, [key]: { label, ambient, substrate, layers: layers.map(({ material, thickness }) => ({ material, thickness })) } }));
+    setPresetValue(key);
+  };
+  const deletePreset = () => {
+    if (!presetValue.startsWith('user-')) return;
+    setUserPresets((old) => { const c = { ...old }; delete c[presetValue]; return c; });
+    setPresetValue('');
   };
 
   return (
@@ -83,12 +111,17 @@ export function ThinFilmDesigner({ onSpectrum }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Preset</Label>
-          <Select onValueChange={applyPreset}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Load a preset…" /></SelectTrigger>
-            <SelectContent className="z-50">
-              {Object.entries(PRESETS).map(([k, p]) => <SelectItem key={k} value={k}>{p.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-1">
+            <Select value={presetValue} onValueChange={applyPreset}>
+              <SelectTrigger className="h-9 min-w-0"><SelectValue placeholder="Load a preset…" /></SelectTrigger>
+              <SelectContent className="z-50">
+                {Object.entries(PRESETS).map(([k, p]) => <SelectItem key={k} value={k}>{p.label}</SelectItem>)}
+                {Object.entries(userPresets).map(([k, p]) => <SelectItem key={k} value={k}>★ {p.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={savePreset} aria-label="Save current stack as preset" title="Save current stack as preset"><Save className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={deletePreset} disabled={!presetValue.startsWith('user-')} aria-label="Delete selected preset" title="Delete selected preset"><Trash2 className="h-4 w-4" /></Button>
+          </div>
         </div>
         <div className="space-y-1">
           <Label htmlFor="ambient" className="text-xs text-muted-foreground">Ambient (top)</Label>
